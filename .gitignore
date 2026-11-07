@@ -1,0 +1,55 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---- 虚拟环境 ----
+.venv/
+venv/
+env/
+
+# ---- 构建产物 ----
+build/
+dist/
+release/
+# 允许 build.spec 进版本库：它是打包配置，不是产物
+*.spec
+!build.spec
+
+# ---- 截图源目录：图片已归档到 docs/images/ ----
+shots/
+# 开发期随手截的图，正式截图在 docs/images/ 下
+shot_*.png
+
+# ---- 测试与验证产物 ----
+# 闭环实测的原始快照与日志：结论已写进 docs/闭环实测报告.md，
+# 中间产物不必入库（每次重跑都会重新生成）
+verify/
+
+# ---- 运行时与本地产物 ----
+*.log
+*.tmp
+settings.json
+*.univer
+
+# ---- 凭据：绝不允许进版本库 ----
+# 发布用的 GitHub Token 存在 .gh_token（本地临时文件），发布后应删除
+.gh_token
+.github_token
+.env
+.env.*
+*.pem
+*.pfx
+*.p12
+
+# ---- 编辑器 / 系统 ----
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store

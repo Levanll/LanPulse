@@ -1,0 +1,133 @@
+name: Release
+
+# 触发：推送 v* 标签（如 v1.0.0）
+# 产物：安装包 + 绿色包，上传到对应的 GitHub Release
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要发布的 tag（如 v1.0.0）"
+        required: true
+
+permissions:
+  contents: write        # 创建 Release 与上传附件所必需
+
+jobs:
+  build:
+    name: 构建并发布
+    runs-on: windows-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          # 必须显式指定依赖文件路径。只写 cache: "pip" 时 setup-python 会去
+          # 找 **/requirements.txt 或 **/pyproject.toml，两者都不存在时
+          # 直接报错 "No file in ... matched to [**/requirements.txt ...]"
+          # —— 这正是 v1.0.0 首次发布时该工作流失败的原因。
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: 计算版本号
+        id: ver
+        shell: pwsh
+        run: |
+          # 版本号唯一来源是 installer/LanPulse.iss 的 MyAppVersion，
+          # 避免 tag 与脚本里的版本号漂移
+          $iss = Get-Content installer/LanPulse.iss -Raw
+          if ($iss -match '#define\s+MyAppVersion\s+"([^"]+)"') {
+            $v = $Matches[1]
+          } else {
+            throw "无法从 installer/LanPulse.iss 解析 MyAppVersion"
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "版本号: $v"
+
+      - name: 运行测试
+        shell: pwsh
+        env:
+          PYTHONPATH: "."
+        run: |
+          python -m pytest tests -q
+          python tools/audit_i18n.py
+
+      - name: 打包 exe
+        run: python -m PyInstaller build.spec --noconfirm --clean
+
+      - name: 安装 Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: 编译安装包与绿色包
+        shell: pwsh
+        run: |
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "未找到 ISCC.exe" }
+          Write-Host "ISCC: $iscc"
+
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          & $iscc "installer\LanPulse.iss"
+
+          $v = "${{ steps.ver.outputs.version }}"
+          Compress-Archive -Path "dist\LanPulse\*" `
+            -DestinationPath "release\LanPulse-$v-win64-portable.zip" -Force
+
+          # 每次构建都重新生成校验和。
+          # 曾经踩过的坑：先由本地发布脚本上传了一份 SHA256SUMS.txt，
+          # 之后 CI 重新构建并覆盖了安装包（大小都变了），但校验和文件
+          # 因为是同名资产被跳过而保持旧内容 —— 用户下载后核对会失败。
+          # 校验和必须与本次构建的产物同源，不能来自上一次构建。
+          Write-Host "生成 SHA256SUMS.txt"
+          $lines = Get-ChildItem release -File |
+            Where-Object { $_.Name -notlike "SHA256SUMS*" } |
+            Sort-Object Name |
+            ForEach-Object {
+              $h = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
+              "$h  $($_.Name)"
+            }
+          $lines | Set-Content -Path "release\SHA256SUMS.txt" -Encoding ascii
+          Write-Host "--- SHA256SUMS.txt ---"
+          Get-Content "release\SHA256SUMS.txt"
+
+          Get-ChildItem release | Select-Object Name, Length
+
+      - name: 显示产物
+        shell: pwsh
+        run: |
+          if (-not (Test-Path release)) { throw "release 目录不存在" }
+          $files = Get-ChildItem release -File
+          if ($files.Count -lt 2) { throw "产物不足 2 个，构建可能失败" }
+          $files | Format-Table Name, @{n="MB";e={[math]::Round($_.Length/1MB,2)}}
+
+      - name: 上传到 Release
+        # v2.6.2 是最后一个 v2 版本，已停止维护（Node 20 已废弃），
+        # 官方要求升级到 v3（Node 24）。
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: LanPulse ${{ steps.ver.outputs.version }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+          # 覆盖同名资产（该参数默认就是 true，显式写出是为了表达意图）：
+          # 重新发布时安装包与校验和必须来自同一次构建。
+          # 曾经出现过「包是新的、SHA256SUMS 是旧的」不一致状态。
+          overwrite_files: true
+          files: |
+            release/LanPulse-*-Setup.exe
+            release/LanPulse-*-win64-portable.zip
+            release/SHA256SUMS.txt

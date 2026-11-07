@@ -1,0 +1,16 @@
+# 开发与打包依赖
+#
+# 程序运行本身不需要这些：安装包与绿色版已自带 Python 运行时与 PySide6。
+#
+#   python -m venv .venv
+#   .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+#
+# 三个包的作用：
+#   PySide6      界面与自绘控件（运行时唯一的外部依赖，已随产物打包）
+#   pyinstaller  打包成单目录产物
+#   pytest       单元测试（纯逻辑，不开窗口、不改系统）
+
+-r requirements.txt
+
+pyinstaller>=6.22
+pytest>=8

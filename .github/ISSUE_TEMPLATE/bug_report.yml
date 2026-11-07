@@ -1,0 +1,111 @@
+name: 问题报告 / Bug report
+description: 报告一个可复现的缺陷
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。LanPulse 会修改系统网络配置，请**务必**附上诊断报告，
+        否则很多问题无法定位。
+
+  - type: checkboxes
+    id: precheck
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索过现有 Issue，没有重复
+          required: true
+        - label: 我已阅读使用说明中的「常见问题」
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 问题描述
+      description: 发生了什么？你期望发生什么？
+      placeholder: |
+        例如：点击「执行修复」后，DNS 没变，但界面显示「已生效」。
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 打开软件，等待体检完成
+        2. 进入「一键修复」
+        3. 勾选「切换至公共 DNS 服务器」
+        4. 点击「执行修复」
+        5. 看到……
+    validations:
+      required: true
+
+  - type: input
+    id: np-version
+    attributes:
+      label: LanPulse 版本
+      description: 在「设置」页面底部或 exe 文件属性里查看
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows 版本
+      description: 运行 `winver` 查看，或提供 build 号
+      placeholder: "Windows 11 23H2 (build 22631)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: elevated
+    attributes:
+      label: 是否以管理员身份运行
+      options:
+        - 是（左下角显示"已获得管理员权限"）
+        - 否（左下角显示"普通权限运行"）
+        - 不确定
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: 安装方式
+      options:
+        - 安装包（Setup.exe）
+        - 绿色包（portable.zip）
+        - 从源码运行
+    validations:
+      required: true
+
+  - type: input
+    id: region
+    attributes:
+      label: 所在地区 / 网络环境
+      description: 影响区域自适应判定，例如"中国大陆家庭宽带"、"新加坡公司网络"、"需要网页登录的酒店网络"
+      placeholder: "中国大陆 / 家庭宽带"
+
+  - type: textarea
+    id: reprot
+    attributes:
+      label: 诊断报告
+      description: |
+        在软件内「报告与日志」页点「导出 HTML 报告」，把内容粘贴到这里，
+        或上传生成的 .html 文件。
+        **报告不含任何个人数据**，可安全分享。
+      placeholder: 把导出的 HTML 报告内容粘贴到这里，或直接拖入文件
+      render: text
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志（可选）
+      description: |
+        `%LOCALAPPDATA%\NetPulse\logs\app.log` 的最后 50 行。
+        如果涉及修复失败，也请附 `audit.jsonl` 对应时段的内容。
+      render: text

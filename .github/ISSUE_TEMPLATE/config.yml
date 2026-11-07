@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用问题与故障排查
+    url: https://github.com/Levanll/LanPulse/blob/main/docs/使用说明.md
+    about: 安装、权限、常见故障的详细说明，先看这里能解决大部分问题
+  - name: 安全漏洞
+    url: https://github.com/Levanll/LanPulse/security/advisories/new
+    about: 请勿在公开 Issue 披露安全问题，使用私密报告渠道

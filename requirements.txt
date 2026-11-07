@@ -1,0 +1,13 @@
+# LanPulse 运行时依赖
+#
+# 程序运行本身只需要 PySide6（界面与自绘控件）。
+# 最终分发的 exe / 安装包已内嵌 Python 运行时与 PySide6，用户无需安装任何东西。
+#
+# 从源码运行时：
+#   python -m venv .venv
+#   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+#
+# 注意：不要把 pyinstaller / pytest 加到这里——它们是开发工具，
+# 见 requirements-dev.txt。CI 的 pip 缓存依赖本文件存在。
+
+PySide6>=6.8,<6.9

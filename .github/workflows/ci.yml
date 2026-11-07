@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# 同一分支的新提交取消上一次运行，避免队列堆积
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (Windows / Python 3.12)
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install dependencies
+        # 只装测试需要的包。本项目的单元测试是纯逻辑测试：
+        # 不开窗口、不需要管理员、不修改任何系统设置。
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6 pyinstaller pytest
+
+      - name: Run tests
+        # 必须设置 QT_QPA_PLATFORM=offscreen：
+        # tests/ 导入 core 时不会碰 Qt，但 ci 若被扩展到导入 app.ui 模块，
+        # 没有显示器的 runner 会在 QApplication 处直接失败。
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m pytest tests -q
+
+      - name: Byte-compile all sources
+        # 等价于语法检查：任何 SyntaxError / 缩进错误在这里就会失败，
+        # 不必等到打包阶段才发现。
+        run: python -m compileall -q core app main.py
