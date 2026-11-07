@@ -133,7 +133,7 @@ function Get-IsccUnavailableHint {
 
   2) 便携解压（不需要管理员权限）：
        下载 https://jrsoftware.org/isdl.php 里的 innosetup-6.x.exe
-       innosetup-6.x.exe /PORTABLE=1 /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="%LOCALAPPDATA%\NetPulseBuildTools\InnoSetup"
+       innosetup-6.x.exe /PORTABLE=1 /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="%LOCALAPPDATA%\LanPulseBuildTools\InnoSetup"
        脚本会自动在该位置找到 ISCC.exe。
 
   3) 官方安装包（需要管理员）：

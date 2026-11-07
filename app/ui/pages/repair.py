@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 
 from core.action_ids import ACTIONS, ActionMeta
 from core.models import ActionResult, ActionState, ChangePreview, RiskLevel
+from core.i18n import t
 from app.ui.theme import T, mono_font, ui_font
 from app.ui.widgets import Panel
 from app.ui.i18n_ui import risk_label
@@ -183,7 +184,7 @@ class RepairPage(QWidget):
         root.setSpacing(12)
 
         head = QHBoxLayout()
-        self.sub = QLabel("根据体检结果自动勾选，你可以逐项调整；高危项默认不勾选")
+        self.sub = QLabel(t("repair.subtitle"))
         self.sub.setObjectName("Caption")
         self.sub.setWordWrap(True)
         head.addWidget(self.sub, 1)
@@ -211,7 +212,7 @@ class RepairPage(QWidget):
         scroll.setWidget(self.list_host)
         root.addWidget(scroll, 1)
 
-        self.empty_hint = QLabel("先做一次网络体检，系统会在这里列出建议的修复项。")
+        self.empty_hint = QLabel(t("repair.empty_hint"))
         self.empty_hint.setObjectName("Caption")
         self.empty_hint.setWordWrap(True)
         self.empty_hint.setMinimumHeight(60)
@@ -238,23 +239,23 @@ class RepairPage(QWidget):
         self.info_label.setWordWrap(True)
         row.addWidget(self.info_label, 1)
 
-        self.btn_select_none = QPushButton("全不选")
+        self.btn_select_none = QPushButton(t("btn.select_none"))
         self.btn_select_none.setObjectName("Ghost")
         self.btn_select_none.clicked.connect(lambda: self._select_all(False))
         row.addWidget(self.btn_select_none)
 
-        self.btn_select_safe = QPushButton("只选低风险")
+        self.btn_select_safe = QPushButton(t("btn.select_safe"))
         self.btn_select_safe.setObjectName("Ghost")
         self.btn_select_safe.clicked.connect(self._select_safe)
         row.addWidget(self.btn_select_safe)
 
-        self.btn_dry = QPushButton("先演练")
+        self.btn_dry = QPushButton(t("btn.dry_run"))
         self.btn_dry.setObjectName("Ghost")
         self.btn_dry.setToolTip("完整走一遍备份与预览流程，但不会修改任何系统设置")
         self.btn_dry.clicked.connect(lambda: self._emit(True))
         row.addWidget(self.btn_dry)
 
-        self.btn_run = QPushButton("执行修复")
+        self.btn_run = QPushButton(t("btn.execute_repair"))
         self.btn_run.setObjectName("Primary")
         self.btn_run.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_run.clicked.connect(lambda: self._emit(False))
@@ -341,7 +342,7 @@ class RepairPage(QWidget):
         self._rows.clear()
 
         if not action_ids:
-            hint = QLabel("本次体检未发现需要修复的问题，无需执行修复 ✓")
+            hint = QLabel(t("repair.nothing_to_fix"))
             hint.setStyleSheet(f"color:{T.ACCENT};")
             hint.setWordWrap(True)
             self.list_lay.addWidget(hint)

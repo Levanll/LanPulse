@@ -29,7 +29,7 @@
 #define MyAppPublisher   "LanPulse Contributors"
 #define MyAppExeName     "LanPulse.exe"
 #define MyAppId          "{{B7E4C2A1-9F3D-4E8B-A5C6-1D2E3F4A5B6C}"
-; 程序数据根目录：%LOCALAPPDATA%\NetPulse（日志 logs、备份 backups 都在下面）
+; 程序数据根目录：%LOCALAPPDATA%\LanPulse（日志 logs、备份 backups 都在下面）
 #define MyDataDirName    "LanPulse"
 
 
@@ -88,7 +88,7 @@ VersionInfoCopyright=Copyright (c) 2026 {#MyAppPublisher}
 ; 设置后 Inno 在安装前和卸载前都会检查该互斥体：
 ;   * 有实例在跑 -> 交互模式弹出"请先关闭 LanPulse"，可重试；
 ;   * 静默模式   -> 直接以非 0 退出码中止，绝不半途覆盖正在被占用的文件。
-AppMutex=NetPulse_Global_Mutex
+AppMutex=LanPulse_Global_Mutex
 ; 覆盖安装时，若目标文件被占用，靠 Restart Manager 让系统自行关闭持有者，
 ; 并记录需要重启的项（本程序是窗口程序，不强制自动重启它）。
 CloseApplications=yes
@@ -164,7 +164,7 @@ const
   静默卸载时两个 SuppressibleMsgBox 都返回默认值 yes/no，因此：
       * 备份 -> IDYES -> 保留
       * 日志 -> IDYES -> 保留
-  即：静默卸载不动 %LOCALAPPDATA%\NetPulse 下的任何内容。 }
+  即：静默卸载不动 %LOCALAPPDATA%\LanPulse 下的任何内容。 }
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataRoot, BackupDir, LogsDir: String;

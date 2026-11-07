@@ -111,7 +111,7 @@
 - 用户手动把自己的 HOSTS 改坏
 - 用户选择了不合适的 DNS 导致访问变慢
 - SmartScreen 提示"未知发布者"（本项目未购买代码签名证书）
-- 卸载后 `%LOCALAPPDATA%\NetPulse\backups` 仍保留（这是**有意为之**，
+- 卸载后 `%LOCALAPPDATA%\LanPulse\backups` 仍保留（这是**有意为之**，
   备份不应因为卸载而丢失）
 
 ---

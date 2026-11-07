@@ -39,7 +39,7 @@ $env:PYTHONPATH="."
 # 跨区域：确认三套剖面的探测目标真的不同
 .\.venv\Scripts\python.exe tools\verify_regions.py
 
-# 双语：确认两种语言下 11 项检测都能翻译、判定不随语言变化
+# 双语：确认两种语言下 14 项检测都能翻译、判定不随语言变化
 .\.venv\Scripts\python.exe tools\verify_i18n.py
 
 # i18n 审计：代码引用的 key 是否都在语言包里（CI 门禁）

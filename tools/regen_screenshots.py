@@ -58,12 +58,12 @@ def build_report() -> DiagnosticReport:
             check_id="adapter", title="check.adapter.title",
             category="check.adapter.category", severity=Severity.OK,
             summary_key="check.adapter.summary_ok",
-            summary="网卡链路正常，已连接到网络",
-            detail="• 以太网｜Up｜192.0.2.42\n• 无线网络｜Disconnected｜无 IP",
+            summary="Adapter link is healthy and connected",
+            detail="• Ethernet | Up | 192.0.2.42\n• Wi-Fi | Disconnected | no IP",
             metrics=[
-                Metric("metric.link_speed", "1 Gbps", "以太网"),
-                Metric("metric.adapter_count", "2", "已连接 1 / 虚拟 1"),
-                Metric("metric.primary_adapter", "以太网", "Generic Gigabit Ethernet"),
+                Metric("metric.link_speed", "1 Gbps", "Ethernet"),
+                Metric("metric.adapter_count", "2", "1 up / 1 virtual"),
+                Metric("metric.primary_adapter", "Ethernet", "Generic Gigabit Ethernet"),
                 Metric("metric.ipv4", f"{SYNTH_IP}/{SYNTH_PREFIX}"),
                 Metric("metric.gateway", SYNTH_GW),
             ],
@@ -108,7 +108,7 @@ def build_report() -> DiagnosticReport:
                 ],
             },
             summary="DNS 配置正常（手动指定）：223.5.5.5（阿里公共 DNS）；223.6.6.6（阿里公共 DNS）",
-            evidence={"servers": SYNTH_DNS, "interface": "以太网"},
+            evidence={"servers": SYNTH_DNS, "interface": "Ethernet"},
             metrics=[
                 Metric("metric.dns_count", "3", ok=True),
                 Metric("metric.dns_owner", "223.5.5.5", "阿里公共 DNS", ok=True),
@@ -210,6 +210,12 @@ SHOTS = [
 
 
 def main() -> int:
+    # 支持 --lang zh|en：中英两套截图，供 README.md / README_EN.md 分别引用
+    lang = "zh"
+    if "--lang" in sys.argv:
+        idx = sys.argv.index("--lang")
+        if idx + 1 < len(sys.argv):
+            lang = sys.argv[idx + 1]
     os.environ.setdefault("QT_QPA_PLATFORM", "windows")
     from PySide6.QtWidgets import QApplication
     from PySide6.QtCore import QTimer
@@ -221,7 +227,7 @@ def main() -> int:
     from core.i18n import set_language, t
     from core.settings import load_settings
 
-    set_language("zh")
+    set_language(lang)
     state = AppState(settings=load_settings())
     win = MainWindow(state, elevated=False, settings=state.settings)
     win.show()
@@ -236,7 +242,7 @@ def main() -> int:
     def shoot_next() -> None:
         i = idx["i"]
         if i >= len(SHOTS):
-            print("全部截图已重新生成")
+            print(f"全部截图已重新生成（{lang}）")
             app.quit()
             return
         page_idx, name = SHOTS[i]
@@ -244,7 +250,8 @@ def main() -> int:
         app.processEvents()
         time.sleep(0.4)
         app.processEvents()
-        path = out_dir / f"screenshot-{name}.png"
+        suffix = "" if lang == "zh" else f"-{lang}"
+        path = out_dir / f"screenshot-{name}{suffix}.png"
         win.grab().save(str(path))
         print(f"  saved {path.name}")
         idx["i"] = i + 1

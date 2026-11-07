@@ -26,10 +26,8 @@ VERSION = "1.1.0"
 WINDOW_TITLE = f"{NAME} - {TAGLINE_ZH}"
 
 #: 应用数据目录名（%LOCALAPPDATA%\<这个>）
-#: 注意：这是用户数据的位置，改名会导致老用户的备份"找不回来"。
-#: 因此即使品牌改名，数据目录仍保留旧名以兼容已有备份；
-#: 新装用户看到的是同一个目录，不影响功能。
-DATA_DIR_NAME = "NetPulse"
+DATA_DIR_NAME = "LanPulse"
+DATA_DIR_NAME = "LanPulse"
 
 #: 发布标签前缀（用于 Git tag 与 Release 标题）
 TAG_PREFIX = "v"

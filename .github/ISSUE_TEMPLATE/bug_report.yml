@@ -106,6 +106,6 @@ body:
     attributes:
       label: 日志（可选）
       description: |
-        `%LOCALAPPDATA%\NetPulse\logs\app.log` 的最后 50 行。
+        `%LOCALAPPDATA%\LanPulse\logs\app.log` 的最后 50 行。
         如果涉及修复失败，也请附 `audit.jsonl` 对应时段的内容。
       render: text

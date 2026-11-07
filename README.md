@@ -17,11 +17,11 @@
 
 **[项目主页](https://github.com/Levanll/LanPulse)** ｜ [English](README_EN.md) ｜ **中文**
 
-![LanPulse](docs/images/hero-banner.png)
+![LanPulse](docs/images/hero-banner-zh.png)
 
 ## 10 秒看懂
 
-LanPulse 是一款 Windows 上的网络诊断与修复工具：打开就自动体检，11 个检测单元跑完给你一个 0-100 的健康分和一句话结论；哪里不对，它直接列出可执行的修复项，**改之前一定先备份，改完一定读回校验，随时可以一键还原**。
+LanPulse 是一款 Windows 上的网络诊断与修复工具：打开就自动体检，14 个检测单元跑完给你一个 0-100 的健康分和一句话结论；哪里不对，它直接列出可执行的修复项，**改之前一定先备份，改完一定读回校验，随时可以一键还原**。
 
 它和其它「一键修复网络」工具的区别只有三点：**它知道自己在地球上哪个位置**（CN / Global / APAC 三套探测与 DNS 推荐剖面，不会拿「百度能不能解析」去判欧洲网络）、**它的每一次系统修改都可回滚**（备份是纯文本 + `.reg`，软件坏了也能手工还原）、**它什么都不上传**（无遥测、无账号、无云端）。
 
@@ -72,50 +72,42 @@ LanPulse 是一款 Windows 上的网络诊断与修复工具：打开就自动�
 
 ## 界面预览
 
-| 总览 · 健康分与问题清单 | DNS 优化 · 当前配置与方案 |
+| 场景 · 按症状选择 | 总览 · 健康分与根因 |
 |---|---|
-| ![总览](docs/images/screenshot-dashboard.png) | ![DNS 优化](docs/images/screenshot-dns.png) |
-| *环形仪表给结论，4 个功能入口给下一步* | *自动识别当前 DNS 归属，方案卡片带风险提示* |
+| ![场景](docs/images/screenshot-scenario.png) | ![总览](docs/images/screenshot-dashboard.png) |
+| *不要求懂技术名词，选「上网很慢」即可开始* | *根因卡片带置信度与证据链，直接给出该做什么* |
 
-| HOSTS 管理 · 只读表格与风险标注 | 一键修复 · 逐项勾选与演练 |
+| DNS 优化 · 当前配置与方案 | HOSTS 管理 · 只读表格与风险标注 |
 |---|---|
-| ![HOSTS 管理](docs/images/screenshot-hosts.png) | ![一键修复](docs/images/screenshot-repair.png) |
-| *默认只读；改文件需先进「高级编辑」* | *每项显示 before → after，高危项默认不勾选* |
+| ![DNS 优化](docs/images/screenshot-dns.png) | ![HOSTS 管理](docs/images/screenshot-hosts.png) |
+| *自动识别当前 DNS 归属，方案卡片带风险提示* | *默认只读；改文件需先进入「高级编辑」* |
 
-| 备份与回滚 · 会话与内容明细 | 诊断详情 · 14 项全量与原始证据 |
+| 一键修复 · 逐项勾选与演练 | 备份与回滚 · 会话与内容明细 |
 |---|---|
-| ![备份与回滚](docs/images/screenshot-backup.png) | ![诊断详情](docs/images/screenshot-diagnose.png) |
-| *备份内容逐项可见，一键还原* | *点任意一行展开指标、建议与 JSON 证据* |
+| ![一键修复](docs/images/screenshot-repair.png) | ![备份与回滚](docs/images/screenshot-backup.png) |
+| *每项显示 before → after，高危项默认不勾选* | *备份内容逐项可见，一键还原* |
 
-| 报告与日志 · 三种格式导出 + 审计流水 | 设置 · 语言与区域在此切换 |
+| 诊断详情 · 14 项全量与原始证据 | 报告与日志 · 三种格式 + 审计流水 |
 |---|---|
-| ![报告与日志](docs/images/screenshot-report.png) | ![设置](docs/images/screenshot-settings-zh.png) |
-| *HTML / JSON / TXT 与 `audit.jsonl` 流水，回答「做了什么」* | *中文 / English 实时切换，区域决定探测集与阈值* |
+| ![诊断详情](docs/images/screenshot-diagnose.png) | ![报告与日志](docs/images/screenshot-report.png) |
+| *点任意一行展开指标、建议与 JSON 证据* | *HTML / JSON / TXT 与 audit.jsonl 流水* |
 
-## 最近更新
+| 设置 · 语言与区域 | |
+|---|---|
+| ![设置](docs/images/screenshot-settings-zh.png) | |
+| *中文 / English 实时切换，区域决定探测集与阈值* | |
 
-**v1.1.0** —— 场景化诊断 + 根因分析
+## 能力一览
 
-- **改名 LanPulse**（原名 NetPulse 与其它项目重名）。用户数据目录不变，已有备份可继续使用
-- **6 个场景**：不再逼用户选“测哪项技术指标”，改成选“我遇到什么情况”
-- **根因分析引擎**：把多个异常合成 1-3 条结论，带置信度与证据链，直接给出该做什么
-- **3 个新检测**：网页分层计时（卡在哪一层）、DNS 篡改检测、下载时延迟（缓冲膨胀）
-- 总计 **14 项检测**、15 个可回滚修复动作
+**14 项检测 · 6 个场景 · 10 条根因规则 · 15 个可回滚修复**
 
-<details>
-<summary>v1.0.0 —— 首个公开版本</summary>
-
-首个版本：11 项检测、15 个可回滚修复动作、备份回滚机制、跨区域自适应、中英双语。
-
-</details>
-
-- 11 个检测单元、15 个修复动作、备份/回滚/演练三段式安全流程全部落地
-- 引入跨区域剖面（CN / Global / APAC），探测目标与分级阈值随区域变化
-- 中英双语运行时切换；`t()` 统一取文案，缺失键显式可见
-- HTML / JSON / TXT 三格式报告；`audit.jsonl` 操作审计
-- 修复 9 个实测缺陷，其中「备份文件名含冒号被 NTFS 当作交替数据流」会让回滚在「看起来备份成功」的情况下 100% 失效
-
-完整记录见 [CHANGELOG.md](CHANGELOG.md)。
+- **按症状入口**：选「上网很慢」而不是「测 DNS」，系统只跑相关检查
+- **根因分析**：把多个异常合成 1-3 条结论，带置信度、证据链与已排除项
+- **三层深检**：网页分层计时（卡在哪一层）、DNS 篡改比对、下载时延迟评级
+- **修复可逆**：每次修改前自动备份，备份为纯文本与 .reg，软件损坏也能手工还原
+- **跨区域**：中国大陆 / 国际 / 亚太三套探测剖面，探测目标与阈值随区域变化
+- **中英双语**：运行时切换，缺失文案显式可见而非静默回退
+- **可审计**：audit.jsonl 记录每一次系统修改
 
 ## 为什么需要它
 
@@ -320,7 +312,7 @@ LanPulse/
 ├── core/                  检测与修复引擎（无 UI 依赖）
 │   ├── models.py          唯一契约：CheckResult / DiagnosticReport / ActionResult
 │   ├── registry.py        检测单元注册与异常隔离
-│   ├── checks/            11 个检测单元
+│   ├── checks/            14 个检测单元
 │   ├── repair/            15 个原子动作 + 事务编排 + 回滚
 │   ├── backup.py          备份/回滚中间层（唯一写系统入口）
 │   ├── region.py          跨区域剖面与网络环境识别
@@ -342,7 +334,7 @@ LanPulse/
 
 | 路径 | 说明 |
 |---|---|
-| `core/context.py` | 单次体检的只读快照：网卡、HOSTS 原文、命令输出全部惰性采集并缓存，避免 11 个单元各自 `PowerShell` 一遍 |
+| `core/context.py` | 单次体检的只读快照：网卡、HOSTS 原文、命令输出全部惰性采集并缓存，避免 14 个单元各自 `PowerShell` 一遍 |
 | `core/platform_win.py` | 所有 Windows 调用的唯一出口（命令执行、原子写入、网卡采集、版本判定） |
 | `core/action_ids.py` | 15 个动作的元数据单一来源；检测只输出 id，UI 只按 id 查表，引擎只按 id 派发 |
 | `core/repair/rollback.py` | 按 `kind` 分派的唯一回滚实现，回滚前做提权预检（权限不足标 `SKIPPED` 而非 `FAILED`） |
@@ -428,8 +420,8 @@ LanPulse/
 | 会上传数据吗？ | **不会。** 代码里没有任何上传逻辑，没有遥测、没有账号、没有云同步 |
 | 会联网吗？ | 只在检测时发起 DNS 查询和 ICMP/TCP 探测，用于判定解析耗时与连通性，**不带任何本机信息**。可用抓包工具验证 |
 | 报告里有个人信息吗？ | 只有本机网络配置（网卡名、IP、DNS、MTU 等）与检测结论。含主机名，**分享前请自行确认** |
-| 数据存在哪？ | 全部在 `%LOCALAPPDATA%\NetPulse\`：`backups/`（备份）、`logs/app.log`（运行日志）、`logs/audit.jsonl`（操作审计）、`settings.json`（设置） |
-| 怎么彻底删除？ | 删程序目录，再删 `%LOCALAPPDATA%\NetPulse\`。**删除前请确认不再需要回滚** |
+| 数据存在哪？ | 全部在 `%LOCALAPPDATA%\LanPulse\`：`backups/`（备份）、`logs/app.log`（运行日志）、`logs/audit.jsonl`（操作审计）、`settings.json`（设置） |
+| 怎么彻底删除？ | 删程序目录，再删 `%LOCALAPPDATA%\LanPulse\`。**删除前请确认不再需要回滚** |
 | 可以关闭联网探测吗？ | 可以。**设置 → 检测策略 → 允许联网探测** 关掉后，所有需要外网的检测项跳过，只看本地配置 |
 
 ## 许可证

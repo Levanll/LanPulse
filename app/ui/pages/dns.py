@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 from core import platform_win as pw
 from core.models import DiagnosticReport
+from core.i18n import t
 from app.ui.theme import T, mono_font
 from app.ui.widgets import Card, Panel, SeverityBadge, kv_row
 from app.ui.i18n_ui import tr_result_advice, tr_result_summary
@@ -93,7 +94,7 @@ class DnsPage(QWidget):
         root.setSpacing(12)
 
         head = QHBoxLayout()
-        sub = QLabel("域名解析服务决定你访问网站走哪条路，是“网页打不开”的首要排查点")
+        sub = QLabel(t("dns.subtitle"))
         sub.setObjectName("Caption")
         sub.setWordWrap(True)
         head.addWidget(sub, 1)
@@ -110,13 +111,13 @@ class DnsPage(QWidget):
         lay.setSpacing(13)
 
         # ---------------- 当前配置 ----------------
-        self.cur_card = Card("当前 DNS 配置", "读取自当前承载上网流量的网卡")
+        self.cur_card = Card(t("dns.current_title"), t("dns.current_desc"))
         self.cur_body = self.cur_card.body
         self.cur_body.addWidget(self._hint("体检后显示当前 DNS 服务器"))
         lay.addWidget(self.cur_card)
 
         # ---------------- 推荐方案 ----------------
-        plan_label = QLabel("选择方案")
+        plan_label = QLabel(t("dns.choose_plan"))
         plan_label.setObjectName("SectionLabel")
         lay.addWidget(plan_label)
 
@@ -136,7 +137,7 @@ class DnsPage(QWidget):
         self.plan_hint.setObjectName("Caption")
         self.plan_hint.setWordWrap(True)
         row.addWidget(self.plan_hint, 1)
-        self.btn_apply = QPushButton("应用所选方案")
+        self.btn_apply = QPushButton(t("btn.apply_plan"))
         self.btn_apply.setObjectName("Primary")
         self.btn_apply.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_apply.clicked.connect(self._emit_apply)
@@ -196,7 +197,7 @@ class DnsPage(QWidget):
             self.btn_apply.setText("应用所选方案")
         else:
             self.plan_hint.setText("将把 DNS 恢复为由 DHCP 自动下发。修改前会自动备份原配置。")
-            self.btn_apply.setText("恢复自动获取")
+            self.btn_apply.setText(t("btn.restore_dhcp"))
 
     def _emit_apply(self) -> None:
         plan = next(p for p in DNS_PLANS if p["id"] == self._selected_plan)

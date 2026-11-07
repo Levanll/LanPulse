@@ -60,20 +60,20 @@ class DashboardPage(QWidget):
         left_panel.setFixedWidth(292)
         self.gauge = HealthGauge()
         left_panel.body.addWidget(self.gauge, 0, Qt.AlignmentFlag.AlignHCenter)
-        self.headline = QLabel("尚未体检")
+        self.headline = QLabel(t("dashboard.not_scanned"))
         self.headline.setFont(ui_font(11, QFont.Weight.DemiBold))
         self.headline.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.headline.setWordWrap(True)
         self.headline.setStyleSheet(f"color:{T.TEXT_DIM};")
         left_panel.body.addWidget(self.headline)
 
-        self.btn_scan = QPushButton("开始网络体检")
+        self.btn_scan = QPushButton(t("btn.scan"))
         self.btn_scan.setObjectName("Primary")
         self.btn_scan.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_scan.clicked.connect(self.request_scan)
         left_panel.body.addWidget(self.btn_scan)
 
-        self.btn_fix = QPushButton("一键修复")
+        self.btn_fix = QPushButton(t("btn.one_click_fix"))
         self.btn_fix.setObjectName("Ghost")
         self.btn_fix.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_fix.setToolTip("根据体检结果执行修复；执行前会展示完整改动清单并自动备份")
@@ -85,31 +85,31 @@ class DashboardPage(QWidget):
         # 右侧关键指标
         right = QVBoxLayout()
         right.setSpacing(14)
-        self.metrics_card = Card("当前网络状态", "数据来自最近一次体检的快照")
+        self.metrics_card = Card(t("dashboard.metrics_title"), t("dashboard.metrics_desc"))
         self.metrics_body = self.metrics_card.body
         right.addWidget(self.metrics_card)
 
-        self.problems_card = Card("发现的问题")
+        self.problems_card = Card(t("dashboard.problems_title"))
         self.problems_card.body.addWidget(self._empty_hint("体检后这里会列出需要处理的项"))
         right.addWidget(self.problems_card, 1)
         top.addLayout(right, 1)
         lay.addLayout(top)
 
         # ---------------- 功能入口 ----------------
-        entry_title = QLabel("功能入口")
+        entry_title = QLabel(t("dashboard.entries_title"))
         entry_title.setObjectName("SectionLabel")
         lay.addWidget(entry_title)
 
         grid = QGridLayout()
         grid.setSpacing(11)
         entries = [
-            ("DNS 优化中心", "查看当前 DNS、测速、切换公共 DNS 或恢复自动获取",
+            (t("dashboard.entry_dns"), t("dashboard.entry_dns_desc"),
              "◈", T.CYAN, self.goto_dns),
-            ("HOSTS 管理", "可视化查看与编辑 HOSTS，识别屏蔽与劫持记录",
+            (t("dashboard.entry_hosts"), t("dashboard.entry_hosts_desc"),
              "☰", T.INFO, self.goto_hosts),
-            ("备份与回滚", "所有系统修改前的快照都在这里，可随时一键还原",
+            (t("dashboard.entry_backup"), t("dashboard.entry_backup_desc"),
              "⏱", T.WARN, self.goto_backup),
-            ("诊断报告", "导出 HTML / JSON / TXT 报告，记录本次体检全部证据",
+            (t("dashboard.entry_report"), t("dashboard.entry_report_desc"),
              "◧", T.ACCENT, self.goto_report),
         ]
         for i, (title, desc, icon, accent, sig) in enumerate(entries):
@@ -120,8 +120,7 @@ class DashboardPage(QWidget):
 
         # ---------------- 底部提示 ----------------
         foot = QLabel(
-            "所有检测与修复均在本机完成，不联网上传任何数据。"
-            "每项系统修改前都会自动备份，可在「备份与回滚」中随时还原。"
+            t("dashboard.footer")
         )
         foot.setObjectName("Caption")
         foot.setWordWrap(True)
@@ -140,7 +139,7 @@ class DashboardPage(QWidget):
     # ------------------------------------------------------------------ #
     def set_busy(self, busy: bool) -> None:
         self.btn_scan.setEnabled(not busy)
-        self.btn_scan.setText("正在体检…" if busy else "开始网络体检")
+        self.btn_scan.setText(t("dashboard.scanning") if busy else t("btn.scan"))
         if busy:
             self.btn_fix.setEnabled(False)
 
@@ -148,20 +147,20 @@ class DashboardPage(QWidget):
     def on_report(self, report: DiagnosticReport) -> None:
         sev = report.overall
         captions = {
-            Severity.OK: "网络状态良好",
-            Severity.INFO: "基本正常",
-            Severity.WARN: "存在问题",
-            Severity.CRITICAL: "需要处理",
-            Severity.SKIP: "检测受限",
+            Severity.OK: t("dashboard.severity_ok"),
+            Severity.INFO: t("dashboard.severity_info"),
+            Severity.WARN: t("dashboard.severity_warn"),
+            Severity.CRITICAL: t("dashboard.severity_critical"),
+            Severity.SKIP: t("dashboard.severity_skip"),
         }
         self.gauge.set_result(report.score, captions.get(sev, "—"), sev.value)
 
         problems = report.problems()
         if not problems:
-            self.headline.setText(f"共检测 {len(report.results)} 项，全部正常")
+            self.headline.setText(t("dashboard.all_ok", n=len(report.results)))
             self.headline.setStyleSheet(f"color:{T.ACCENT};")
         else:
-            self.headline.setText(f"共检测 {len(report.results)} 项，发现 {len(problems)} 个问题")
+            self.headline.setText(t("dashboard.with_problems", n=len(report.results), m=len(problems)))
             self.headline.setStyleSheet(f"color:{sev_color(sev.value)};")
 
         self.btn_fix.setEnabled(bool(self.state.suggested_actions()))
@@ -175,9 +174,10 @@ class DashboardPage(QWidget):
             if item.widget():
                 item.widget().deleteLater()
 
-        self.metrics_body.addWidget(kv_row("主机名", report.host or "—"))
+        self.metrics_body.addWidget(kv_row(t("dashboard.hostname"), report.host or "—"))
         self.metrics_body.addWidget(
-            kv_row("管理员权限", "已提权" if report.elevated else "普通权限（部分修复不可用）",
+            kv_row(t("dashboard.privilege"),
+                   t("dashboard.elevated_yes") if report.elevated else t("dashboard.elevated_no"),
                    ok=report.elevated)
         )
 

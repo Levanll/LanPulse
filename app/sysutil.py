@@ -148,7 +148,7 @@ class SingleInstance:
     否则句柄泄漏，且在长驻进程里会累积。
     """
 
-    def __init__(self, key: str = "NetPulse_Global_Mutex") -> None:
+    def __init__(self, key: str = "LanPulse_Global_Mutex") -> None:
         self.key = key
         self._handle: int | None = None
         self._is_owner = False

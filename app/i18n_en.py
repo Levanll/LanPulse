@@ -32,7 +32,7 @@ CATALOG: dict[str, str] = {
     # ------------------------------------------------------------------ #
     # Severity / risk
     # ------------------------------------------------------------------ #
-    "sev.ok": "Healthy",
+    "sev.ok": "OK",
     "sev.info": "Notice",
     "sev.warn": "Warning",
     "sev.critical": "Critical",
@@ -1842,6 +1842,76 @@ CATALOG: dict[str, str] = {
     'rootcause.confidence.high': 'High',
     'rootcause.confidence.medium': 'Medium',
     'rootcause.confidence.low': 'Low',
+
+    # ---- UI 骨架文案（v1.1.0 补齐）----
+    'dashboard.not_scanned': 'Not scanned yet',
+    'dashboard.metrics_title': 'Current network state',
+    'dashboard.metrics_desc': 'Taken from the most recent scan',
+    'dashboard.problems_title': 'Findings',
+    'dashboard.entries_title': 'Quick actions',
+    'dashboard.scanning': 'Scanning…',
+    'dashboard.no_problems': 'No network problems found ✓',
+    'dashboard.footer': 'All checks and repairs run locally with zero upload. Every change is backed up first and can be rolled back at any time.',
+    'dashboard.all_ok': 'All {n} checks passed',
+    'dashboard.with_problems': '{n} checks, {m} issues found',
+    'dashboard.confidence': 'Confidence: {level}',
+    'dashboard.other_issues': 'Other issues ({n}, not covered above)',
+    'btn.one_click_fix': 'One-click fix',
+    'btn.manual_backup': 'Create backup now',
+    'btn.discard': 'Discard',
+    'btn.restore_hosts': 'Restore default',
+    'btn.execute_repair': 'Run repair',
+    'diagnose.pick_one': 'Select a row on the left to see details',
+    'diagnose.metrics': 'Metrics',
+    'diagnose.advice': 'Advice',
+    'diagnose.evidence': 'Raw evidence',
+    'backup.restore_btn': 'Restore to {ts}',
+    'backup.rollback_hint': 'Rollback only restores the items recorded in this backup; later unrelated changes are untouched.',
+    'dns.subtitle': 'DNS decides the route to every site you visit — the first thing to check when pages fail to open',
+    'dns.current_title': 'Current DNS configuration',
+    'dns.current_desc': 'Read from the adapter currently carrying your traffic',
+    'dns.choose_plan': 'Choose a plan',
+    'hosts.no_change': 'No changes to save.',
+    'repair.subtitle': 'Preselected from the scan; adjust as you like — high-risk items start unchecked',
+    'repair.empty_hint': 'Run a scan first and the suggested fixes will appear here.',
+    'scenario.intro': 'Pick whatever matches your situation; only the relevant checks will run',
+    'scenario.checks_count': '{n} checks',
+    'scenario.advanced_hint': 'Want every check individually? Use the Diagnostics page',
+    'scenario.btn_full': 'Run full checkup',
+    'nav.scenario': 'Scenarios',
+
+    # ---- UI 骨架补充 ----
+    'backup.restore_default': 'Restore to this backup',
+    'repair.nothing_to_fix': 'Nothing to fix from this scan ✓',
+
+    # ---- 仪表盘细节 ----
+    'dashboard.hostname': 'Host',
+    'dashboard.privilege': 'Privileges',
+    'dashboard.elevated_yes': 'Administrator',
+    'dashboard.elevated_no': 'Standard user (some repairs unavailable)',
+    'gauge.waiting': 'Waiting',
+    'gauge.waiting_sample': 'Waiting for samples',
+    'dashboard.entry_dns': 'DNS tuning',
+    'dashboard.entry_dns_desc': 'Inspect current DNS, test speed, switch to public resolvers, or fall back to DHCP',
+    'dashboard.entry_hosts': 'HOSTS manager',
+    'dashboard.entry_hosts_desc': 'View and edit HOSTS with blocked and hijacked entries flagged',
+    'dashboard.entry_backup': 'Backups & rollback',
+    'dashboard.entry_backup_desc': 'Every snapshot taken before a change lives here; restore in one click',
+    'dashboard.entry_report': 'Reports',
+    'dashboard.entry_report_desc': 'Export HTML / JSON / TXT with the full evidence of this scan',
+    'dashboard.severity_ok': 'Network looks healthy',
+    'dashboard.severity_info': 'Mostly fine',
+    'dashboard.severity_warn': 'Issues found',
+    'dashboard.severity_critical': 'Needs attention',
+    'dashboard.severity_skip': 'Limited by environment',
+
+    # ---- 诊断页表头与状态 ----
+    'diagnose.col_check': 'Check',
+    'diagnose.col_state': 'State',
+    'diagnose.col_result': 'Result',
+    'diagnose.col_time': 'Time',
+
+    'diagnose.meta': '{n} checks | {host} | {ts}',
 }
 
 __all__ = ["CATALOG"]

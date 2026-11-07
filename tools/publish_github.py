@@ -201,7 +201,7 @@ def create_repo(token: str, login: str, repo: str, *, private: bool) -> bool:
     payload = {
         "name": repo,
         "description": (
-            "Windows 网络体检与一键修复 —— 11 项检测 / 15 个可回滚修复动作 / "
+            "Windows 网络体检与一键修复 —— 14 项检测 / 15 个可回滚修复动作 / "
             "跨区域自适应 / 中英双语。A Windows network diagnostics and one-click "
             "repair tool with fully reversible changes."
         ),
@@ -338,7 +338,7 @@ def _release_notes() -> str:
             return m.group(1).strip()[:60000]
     return (
         "首个正式版本。\n\n"
-        "- 11 项网络检测、15 个可回滚修复动作\n"
+        "- 14 项网络检测、15 个可回滚修复动作\n"
         "- 备份优先：所有修改可精确还原\n"
         "- 跨区域自适应（中国 / 国际 / 亚太）\n"
         "- 中英双语界面\n"

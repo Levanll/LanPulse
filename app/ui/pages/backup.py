@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.backup import BackupSession
+from core.i18n import t
 from app.ui.theme import T, mono_font, ui_font
 from app.ui.widgets import Panel
 
@@ -42,12 +43,12 @@ class BackupPage(QWidget):
         head.addWidget(self.count_label)
         head.addStretch(1)
 
-        self.btn_open = QPushButton("打开备份目录")
+        self.btn_open = QPushButton(t("btn.open_backup_dir"))
         self.btn_open.setObjectName("Ghost")
         self.btn_open.clicked.connect(self._open_dir)
         head.addWidget(self.btn_open)
 
-        self.btn_new = QPushButton("手动创建备份")
+        self.btn_new = QPushButton(t("btn.manual_backup"))
         self.btn_new.setObjectName("Ghost")
         self.btn_new.setToolTip("在修改任何设置前，先手动存一份当前网络配置快照")
         self.btn_new.clicked.connect(self.request_create)
@@ -83,13 +84,13 @@ class BackupPage(QWidget):
         )
         panel.body.addWidget(self.detail, 1)
 
-        self.btn_rollback = QPushButton("恢复到此次备份状态")
+        self.btn_rollback = QPushButton(t("backup.restore_default"))
         self.btn_rollback.setObjectName("Primary")
         self.btn_rollback.setEnabled(False)
         self.btn_rollback.clicked.connect(self._do_rollback)
         panel.body.addWidget(self.btn_rollback)
 
-        warn = QLabel("回滚只会还原备份中记录的项目，不会影响备份之后你对系统做的其它修改。")
+        warn = QLabel(t("backup.rollback_hint"))
         warn.setObjectName("Caption")
         warn.setWordWrap(True)
         panel.body.addWidget(warn)
@@ -160,7 +161,7 @@ class BackupPage(QWidget):
         self.btn_rollback.setEnabled(has_state)
         if has_state:
             self.btn_rollback.setText(
-                f"恢复到 {time.strftime('%m-%d %H:%M', time.localtime(s.created_at))} 的状态"
+                t("backup.restore_btn", ts=time.strftime("%m-%d %H:%M", time.localtime(s.created_at)))
             )
         else:
             self.btn_rollback.setText("该备份无可恢复内容")

@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from core import platform_win as pw
 from core.models import DiagnosticReport
+from core.i18n import t
 from app.ui.theme import T, mono_font, sev_color, ui_font
 from app.ui.widgets import Panel, SeverityBadge
 from app.ui.i18n_ui import tr_result_summary
@@ -98,12 +99,12 @@ class HostsPage(QWidget):
         head.addWidget(self.path_label)
         head.addStretch(1)
 
-        self.btn_reload = QPushButton("重新读取")
+        self.btn_reload = QPushButton(t("btn.reload"))
         self.btn_reload.setObjectName("Ghost")
         self.btn_reload.clicked.connect(self.reload)
         head.addWidget(self.btn_reload)
 
-        self.btn_edit = QPushButton("高级编辑")
+        self.btn_edit = QPushButton(t("btn.advanced_edit"))
         self.btn_edit.setObjectName("Ghost")
         self.btn_edit.setCheckable(True)
         self.btn_edit.toggled.connect(self._toggle_edit)
@@ -152,11 +153,11 @@ class HostsPage(QWidget):
         editor_panel.body.addWidget(self.editor, 1)
         erow = QHBoxLayout()
         erow.addStretch(1)
-        self.btn_cancel_edit = QPushButton("放弃修改")
+        self.btn_cancel_edit = QPushButton(t("btn.discard"))
         self.btn_cancel_edit.setObjectName("Ghost")
         self.btn_cancel_edit.clicked.connect(lambda: self._toggle_edit(False))
         erow.addWidget(self.btn_cancel_edit)
-        self.btn_save = QPushButton("保存（自动备份）")
+        self.btn_save = QPushButton(t("btn.save_hosts"))
         self.btn_save.setObjectName("Primary")
         self.btn_save.clicked.connect(self._emit_save)
         erow.addWidget(self.btn_save)
@@ -177,11 +178,11 @@ class HostsPage(QWidget):
         tip.setObjectName("Caption")
         tip.setWordWrap(True)
         brow.addWidget(tip, 1)
-        self.btn_clean = QPushButton("清理异常记录")
+        self.btn_clean = QPushButton(t("btn.clean_hosts"))
         self.btn_clean.setObjectName("Ghost")
         self.btn_clean.clicked.connect(self.request_clean)
         brow.addWidget(self.btn_clean)
-        self.btn_restore = QPushButton("恢复系统默认")
+        self.btn_restore = QPushButton(t("btn.restore_hosts"))
         self.btn_restore.setObjectName("Danger")
         self.btn_restore.clicked.connect(self.request_restore)
         brow.addWidget(self.btn_restore)
@@ -281,7 +282,7 @@ class HostsPage(QWidget):
     def _toggle_edit(self, on: bool) -> None:
         self._edit_mode = on
         self.editor_panel.setVisible(on)
-        self.btn_edit.setText("退出编辑" if on else "高级编辑")
+        self.btn_edit.setText(t("btn.exit_edit") if on else "高级编辑")
         self.btn_save.setEnabled(on)
         self.btn_reload.setEnabled(not on)
         if on:
@@ -293,7 +294,7 @@ class HostsPage(QWidget):
     def _emit_save(self) -> None:
         text = self.editor.toPlainText()
         if text == self._raw:
-            self.status_label.setText("内容未变化，无需保存。")
+            self.status_label.setText(t("hosts.no_change"))
             return
         self.request_save_text.emit(text)
 

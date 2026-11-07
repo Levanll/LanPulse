@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget,
 )
 
+from core.i18n import t
 from app.ui.theme import T, mono_font, sev_color, ui_font
 
 
@@ -32,7 +33,7 @@ class HealthGauge(QWidget):
         super().__init__(parent)
         self._score = 0.0
         self._target = 0.0
-        self._caption = "等待检测"
+        self._caption = t("gauge.waiting")
         self._sev = "skip"
         self.setMinimumSize(210, 210)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -77,7 +78,7 @@ class HealthGauge(QWidget):
         self._anim.start()
 
     def reset(self) -> None:
-        self._caption = "等待检测"
+        self._caption = t("gauge.waiting")
         self._sev = "skip"
         self._anim.stop()
         self._anim.setStartValue(self._score)
@@ -149,9 +150,12 @@ class HealthGauge(QWidget):
 # --------------------------------------------------------------------------- #
 # 严重度徽章
 # --------------------------------------------------------------------------- #
-_SEV_TEXT = {
-    "ok": "正常", "info": "提示", "warn": "异常", "critical": "严重", "skip": "跳过",
-}
+def _sev_text(sev: str) -> str:
+    """严重度标签。走 i18n，英文界面不能出现中文。"""
+    return t(f"sev.{sev}")
+
+
+_SEV_KEYS = ("ok", "info", "warn", "critical", "skip")
 
 
 class SeverityBadge(QWidget):
@@ -164,11 +168,16 @@ class SeverityBadge(QWidget):
         self.setMinimumWidth(52)
         f = ui_font(8, QFont.Weight.DemiBold)
         self.setFont(f)
+        self._resize_to_text()
+
+    def _resize_to_text(self) -> None:
+        """按当前文字自适应宽度。英文标签比中文长，固定宽度会被截断。"""
         fm = self.fontMetrics()
-        self.setFixedWidth(max(52, fm.horizontalAdvance(_SEV_TEXT.get(severity, "")) + 20))
+        self.setFixedWidth(max(52, fm.horizontalAdvance(_sev_text(self._sev)) + 22))
 
     def set_severity(self, sev: str) -> None:
         self._sev = sev
+        self._resize_to_text()
         self.update()
 
     def paintEvent(self, event) -> None:  # noqa: N802
@@ -183,7 +192,7 @@ class SeverityBadge(QWidget):
         p.drawRoundedRect(r.adjusted(0.5, 0.5, -0.5, -0.5), 11, 11)
         p.setPen(QPen(c))
         p.setFont(self.font())
-        p.drawText(r, Qt.AlignmentFlag.AlignCenter, _SEV_TEXT.get(self._sev, ""))
+        p.drawText(r, Qt.AlignmentFlag.AlignCenter, _sev_text(self._sev))
         p.end()
 
 
@@ -221,7 +230,7 @@ class SparkLine(QWidget):
         if len(self._points) < 2:
             p.setPen(QPen(QColor(T.TEXT_FAINT)))
             p.setFont(ui_font(8))
-            p.drawText(QRectF(0, 0, w, h), Qt.AlignmentFlag.AlignCenter, "等待采样")
+            p.drawText(QRectF(0, 0, w, h), Qt.AlignmentFlag.AlignCenter, t("gauge.waiting_sample"))
             p.end()
             return
 

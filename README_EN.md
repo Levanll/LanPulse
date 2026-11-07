@@ -17,7 +17,7 @@
 
 **[Home](https://github.com/Levanll/LanPulse)** ｜ **English** ｜ [中文](README.md)
 
-![LanPulse](docs/images/hero-banner.png)
+![LanPulse](docs/images/hero-banner-en.png)
 
 ## Understand it in 10 seconds
 
@@ -74,48 +74,43 @@ Click **Restart as administrator** in the bottom-left, accept the UAC prompt, op
 
 | Dashboard · health score and problems | DNS optimizer · current config and presets |
 |---|---|
-| ![Dashboard](docs/images/screenshot-dashboard.png) | ![DNS optimizer](docs/images/screenshot-dns.png) |
-| *The gauge gives the verdict, four entry points give the next step* | *DNS vendors identified automatically; presets carry risk hints* |
-
-| HOSTS manager · read-only table with risk labels | One-click repair · per-item selection and dry run |
+| Scenarios · pick by symptom | Overview · health score and root causes |
 |---|---|
-| ![HOSTS manager](docs/images/screenshot-hosts.png) | ![One-click repair](docs/images/screenshot-repair.png) |
-| *Read-only by default; editing requires "Advanced edit"* | *Each item shows before → after; high-risk items start unchecked* |
+| ![Scenarios](docs/images/screenshot-scenario-en.png) | ![Overview](docs/images/screenshot-dashboard-en.png) |
+| *No jargon needed — pick "slow internet" and go* | *Findings carry confidence and an evidence chain* |
 
-| Backup & rollback · sessions and contents | Diagnostics · all 14 checks with raw evidence |
+| DNS tuning · current config and presets | HOSTS manager · read-only with risk labels |
 |---|---|
-| ![Backup & rollback](docs/images/screenshot-backup.png) | ![Diagnostics](docs/images/screenshot-diagnose.png) |
-| *Every backed-up item is visible; restore in one click* | *Click a row to expand metrics, advice, and JSON evidence* |
+| ![DNS tuning](docs/images/screenshot-dns-en.png) | ![HOSTS manager](docs/images/screenshot-hosts-en.png) |
+| *DNS vendors identified automatically; presets carry risk hints* | *Read-only by default; editing requires “Advanced edit”* |
 
-| Reports & logs · three export formats plus the audit trail | Settings · language and region live here |
+| One-click fix · per-item selection and dry run | Backups & rollback · sessions and contents |
 |---|---|
-| ![Reports & logs](docs/images/screenshot-report.png) | ![Settings](docs/images/screenshot-settings-en.png) |
-| *HTML / JSON / TXT exports and the `audit.jsonl` trail — what was done, when* | *Switch Chinese / English in place; region drives probe sets and thresholds* |
+| ![One-click fix](docs/images/screenshot-repair-en.png) | ![Backups & rollback](docs/images/screenshot-backup-en.png) |
+| *Each item shows before → after; high-risk items start unchecked* | *Every backed-up item is visible; restore in one click* |
 
-## What's new
+| Diagnostics · all 14 checks with raw evidence | Reports & logs · three formats plus the audit trail |
+|---|---|
+| ![Diagnostics](docs/images/screenshot-diagnose-en.png) | ![Reports & logs](docs/images/screenshot-report-en.png) |
+| *Click a row to expand metrics, advice, and JSON evidence* | *HTML / JSON / TXT and the audit.jsonl trail* |
 
-**v1.1.0** — scenario-guided diagnosis + root cause analysis
+| Settings · language and region | |
+|---|---|
+| ![Settings](docs/images/screenshot-settings-en.png) | |
+| *Switch Chinese / English in place; region drives probe sets and thresholds* | |
 
-- **Renamed to LanPulse** (NetPulse collided with another project). The data directory is unchanged, so existing backups keep working
-- **6 scenarios**: pick the symptom, not the technical metric
-- **Root cause engine**: collapses several anomalies into 1-3 actionable findings with confidence, evidence chain, and the action to take
-- **3 new checks**: layered web timing (which stage stalls), DNS tampering, and latency under download load (bufferbloat)
-- **14 checks** total, 15 reversible repair actions
+## At a glance
 
-<details>
-<summary>v1.0.0 — first public release</summary>
+**14 checks · 6 scenarios · 10 root-cause rules · 15 reversible fixes**
 
-11 checks, 15 reversible repair actions, backup/rollback layer, region-aware probing, Chinese/English UI.
+- **Symptom-first entry**: pick “slow internet”, not “check DNS” — only relevant checks run
+- **Root cause analysis**: collapses several anomalies into 1-3 findings with confidence, evidence chain, and what was already ruled out
+- **Three deep checks**: layered web timing (which stage stalls), DNS tampering comparison, latency under load
+- **Reversible repairs**: every change is backed up first as plain text and \.reg\ files, restorable even if the app itself breaks
+- **Region-aware**: separate CN / Global / APAC probe sets and thresholds
+- **Bilingual**: switch at runtime; missing strings surface explicitly instead of silently falling back
+- **Auditable**: \udit.jsonl\ records every system change
 
-</details>
-
-- 11 check units, 15 repair actions, and the full back-up / roll-back / dry-run safety flow
-- Region profiles (CN / Global / APAC): probe targets and grading thresholds now follow the region
-- Runtime language switching; all user-facing text goes through `t()`, missing keys are visible
-- HTML / JSON / TXT reports plus an `audit.jsonl` operation trail
-- 9 defects found by real testing and fixed — including one where a colon in a backup filename made NTFS treat it as an alternate data stream, which broke rollback 100% of the time while looking like a successful backup
-
-Full history in [CHANGELOG.md](CHANGELOG.md).
 
 ## Why this exists
 
@@ -428,8 +423,8 @@ Check [existing issues](https://github.com/Levanll/LanPulse/issues) first. Attac
 | Does it upload anything? | **No.** There is no upload code path — no telemetry, no accounts, no sync |
 | Does it use the network? | Only diagnostic DNS queries and ICMP/TCP probes, used to time resolution and reachability. They carry no machine information. Verify with a packet capture |
 | Does the report contain personal data? | Only your network configuration (adapter names, IPs, DNS, MTU…) and check results. It includes the hostname — **review before sharing** |
-| Where does data live? | All under `%LOCALAPPDATA%\NetPulse\`: `backups\`, `logs\app.log`, `logs\audit.jsonl`, `settings.json` |
-| How do I remove everything? | Delete the program folder, then `%LOCALAPPDATA%\NetPulse\`. **Make sure you no longer need a rollback first** |
+| Where does data live? | All under `%LOCALAPPDATA%\LanPulse\`: `backups\`, `logs\app.log`, `logs\audit.jsonl`, `settings.json` |
+| How do I remove everything? | Delete the program folder, then `%LOCALAPPDATA%\LanPulse\`. **Make sure you no longer need a rollback first** |
 | Can I turn probing off? | Yes. **Settings → Scanning → Allow network probing** disables every check that needs the internet; only local configuration is inspected |
 
 ## License

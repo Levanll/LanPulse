@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from core.models import CheckResult, DiagnosticReport, Severity
+from core.i18n import t
 from app.ui.theme import T, mono_font, sev_color, ui_font
 from app.ui.widgets import Panel, SeverityBadge
 from app.ui.i18n_ui import (
@@ -54,7 +55,8 @@ class DiagnosePage(QWidget):
 
         # ---- 左：检测项表格 ----
         self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["检测项", "状态", "结论", "耗时"])
+        self.table.setHorizontalHeaderLabels([t("diagnose.col_check"), t("diagnose.col_state"),
+                                             t("diagnose.col_result"), t("diagnose.col_time")])
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -73,7 +75,7 @@ class DiagnosePage(QWidget):
         # ---- 右：详情 ----
         detail_panel = Panel()
         detail_panel.setMinimumWidth(380)
-        self.detail_title = QLabel("选择左侧任一项查看详情")
+        self.detail_title = QLabel(t("diagnose.pick_one"))
         self.detail_title.setFont(ui_font(11, QFont.Weight.DemiBold))
         self.detail_title.setStyleSheet(f"color:{T.TEXT};")
         self.detail_title.setWordWrap(True)
@@ -123,7 +125,7 @@ class DiagnosePage(QWidget):
         ts = ""
         if report.finished_at:
             ts = time.strftime("%H:%M:%S", time.localtime(report.finished_at))
-        self.meta.setText(f"共 {len(report.results)} 项｜{report.host}｜{ts}")
+        self.meta.setText(t("diagnose.meta", n=len(report.results), host=report.host, ts=ts))
 
     def _fill_table(self, report: DiagnosticReport) -> None:
         self.table.setRowCount(len(report.results))
@@ -185,7 +187,7 @@ class DiagnosePage(QWidget):
             )
         if r.metrics:
             parts.append(f"<div style='margin-top:10px;color:{T.TEXT_FAINT};"
-                         f"font-size:8.5pt;letter-spacing:1px'>指标</div>")
+                         f"font-size:8.5pt;letter-spacing:1px'>{html.escape(t('diagnose.metrics'))}</div>")
             parts.append("<table width='100%' cellspacing='0' cellpadding='4'>")
             for m in r.metrics:
                 col = T.ACCENT if m.ok is True else (T.DANGER if m.ok is False else T.TEXT)
@@ -200,7 +202,7 @@ class DiagnosePage(QWidget):
             parts.append("</table>")
         if r.advice:
             parts.append(f"<div style='margin-top:10px;color:{T.TEXT_FAINT};"
-                         f"font-size:8.5pt;letter-spacing:1px'>建议</div>"
+                         f"font-size:8.5pt;letter-spacing:1px'>{html.escape(t('diagnose.advice'))}</div>"
                          f"<ul style='margin:4px 0 0 16px'>")
             for a in tr_result_advice(r):
                 parts.append(f"<li style='color:{T.TEXT_DIM};margin-bottom:3px'>"
@@ -211,7 +213,7 @@ class DiagnosePage(QWidget):
             if len(raw) > 4000:
                 raw = raw[:4000] + "\n…（已截断）"
             parts.append(f"<div style='margin-top:10px;color:{T.TEXT_FAINT};"
-                         f"font-size:8.5pt;letter-spacing:1px'>原始证据</div>")
+                         f"font-size:8.5pt;letter-spacing:1px'>{html.escape(t('diagnose.evidence'))}</div>")
             parts.append(
                 f"<pre style='background:rgba(0,0,0,0.35);color:{T.TEXT_DIM};"
                 f"font-family:Consolas;font-size:8.5pt;padding:8px;border-radius:6px;"

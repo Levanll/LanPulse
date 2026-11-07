@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from core.models import DiagnosticReport
 from app.logging_setup import read_audit
+from core.i18n import t
 from app.ui.theme import T, mono_font, ui_font
 from app.ui.widgets import Card, Panel
 
@@ -46,9 +47,9 @@ class ReportPage(QWidget):
         root.addLayout(head)
 
         # ---- 报告导出 ----
-        card = Card("导出本机体检报告",
+        card = Card(t("report.export_title"),
                     "报告仅包含本机网络配置与检测结论，不含任何个人数据，可安全分享给维修人员")
-        self.report_summary = QLabel("尚未体检")
+        self.report_summary = QLabel(t("dashboard.not_scanned"))
         self.report_summary.setObjectName("Caption")
         self.report_summary.setWordWrap(True)
         card.body.addWidget(self.report_summary)
@@ -56,9 +57,9 @@ class ReportPage(QWidget):
         btns = QHBoxLayout()
         btns.setSpacing(9)
         for fmt, label, tip in (
-            ("html", "导出 HTML 报告", "单文件网页，含完整证据，适合发给他人"),
-            ("json", "导出 JSON", "结构化数据，适合程序处理或存档"),
-            ("text", "导出 TXT", "纯文本，适合粘贴进工单"),
+            ("html", t("btn.export_html"), "单文件网页，含完整证据，适合发给他人"),
+            ("json", t("btn.export_json"), "结构化数据，适合程序处理或存档"),
+            ("text", t("btn.export_text"), "纯文本，适合粘贴进工单"),
         ):
             b = QPushButton(label)
             b.setObjectName("Ghost")
@@ -72,7 +73,7 @@ class ReportPage(QWidget):
         # ---- 审计流水 ----
         audit_card = Panel()
         top = QHBoxLayout()
-        title = QLabel("操作审计流水")
+        title = QLabel(t("report.audit_title"))
         title.setFont(ui_font(11, QFont.Weight.DemiBold))
         title.setStyleSheet(f"color:{T.TEXT};")
         top.addWidget(title)
@@ -86,7 +87,7 @@ class ReportPage(QWidget):
         self.filter.currentIndexChanged.connect(self._apply_filter)
         top.addWidget(self.filter)
 
-        self.btn_refresh = QPushButton("刷新")
+        self.btn_refresh = QPushButton(t("btn.refresh"))
         self.btn_refresh.setObjectName("Ghost")
         self.btn_refresh.clicked.connect(self.refresh_audit)
         top.addWidget(self.btn_refresh)

@@ -32,11 +32,11 @@
 ------------------------------------------------------------------------
 程序不在自己目录里写任何东西，所有用户数据都在：
 
-  %LOCALAPPDATA%\NetPulse\
+  %LOCALAPPDATA%\LanPulse\
       backups\   <- 每次修改系统前的自动备份（恢复网络配置全靠它）
       logs\      <- app.log（运行日志）、audit.jsonl（操作审计）
 
-在资源管理器地址栏粘贴 %LOCALAPPDATA%\NetPulse 并回车即可打开。
+在资源管理器地址栏粘贴 %LOCALAPPDATA%\LanPulse 并回车即可打开。
 注意：备份目录请勿手工删除，删了就无法回滚此前的修复动作。
 
 四、如何彻底卸载
@@ -45,10 +45,10 @@
 
   1. 确认 LanPulse 已退出（任务栏没有它的图标）；
   2. 删除你解压出来的整个 LanPulse 文件夹；
-  3. 如需连用户数据一起清掉，删除 %LOCALAPPDATA%\NetPulse。
+  3. 如需连用户数据一起清掉，删除 %LOCALAPPDATA%\LanPulse。
 
 第 3 步是可选的：里面是你的网络配置备份和运行日志。只删文件夹、
-保留 %LOCALAPPDATA%\NetPulse，是完全正常的用法——方便你以后重新解压
+保留 %LOCALAPPDATA%\LanPulse，是完全正常的用法——方便你以后重新解压
 一份继续用原有的备份。
 
 五、系统要求
@@ -91,11 +91,11 @@ yourself from source (see the build steps in the project README).
 ------------------------------------------------------------------------
 The program writes nothing into its own folder. All user data is under:
 
-  %LOCALAPPDATA%\NetPulse\
+  %LOCALAPPDATA%\LanPulse\
       backups\   <- automatic backup taken before every system change
       logs\      <- app.log (runtime log), audit.jsonl (action audit trail)
 
-Paste %LOCALAPPDATA%\NetPulse into the Explorer address bar to open it.
+Paste %LOCALAPPDATA%\LanPulse into the Explorer address bar to open it.
 Do not delete the backups folder manually - without it, previous repairs
 cannot be rolled back.
 
@@ -106,10 +106,10 @@ so uninstalling simply means deleting files:
 
   1. Make sure LanPulse is closed (not in the notification area);
   2. Delete the LanPulse folder you extracted;
-  3. Optionally delete %LOCALAPPDATA%\NetPulse for a clean slate.
+  3. Optionally delete %LOCALAPPDATA%\LanPulse for a clean slate.
 
 Step 3 is optional. It holds your network configuration backups and logs.
-Deleting only the program folder while keeping %LOCALAPPDATA%\NetPulse is
+Deleting only the program folder while keeping %LOCALAPPDATA%\LanPulse is
 perfectly normal - you can extract a fresh copy later and keep using the
 backups you already have.
 
