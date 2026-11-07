@@ -101,8 +101,9 @@ function Resolve-Iscc {
     if (${env:ProgramFiles(x86)}) { $candidates += (Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6\ISCC.exe') }
     if ($env:LOCALAPPDATA) {
         $candidates += (Join-Path $env:LOCALAPPDATA 'Programs\Inno Setup 6\ISCC.exe')
-        # 本项目实测使用的 portable 解压位置（无管理员权限时的装法）
+        # 便携解压位置（无管理员权限时的装法，需手动指定 /PORTABLE=1 解到这里）
         $candidates += (Join-Path $env:LOCALAPPDATA 'LanPulseBuildTools\InnoSetup\ISCC.exe')
+        $candidates += (Join-Path $env:LOCALAPPDATA 'NetPulseBuildTools\InnoSetup\ISCC.exe')
     }
 
     # 非系统盘的常见安装位置。装在 D:\Tools 之类的地方是为了不占用 C 盘；

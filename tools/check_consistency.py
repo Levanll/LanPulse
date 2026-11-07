@@ -39,6 +39,10 @@ from core.scenarios import SCENARIOS  # noqa: E402
 #: 旧品牌名。拼接写避免脚本自身被误报
 OLD_BRAND = "Net" + "Pulse"
 
+#: 允许出现旧名的上下文：仅限"兼容旧版构建工具目录"的探测路径。
+#: 这类引用不是品牌残留，而是为了在老机器上仍能找到 Inno Setup。
+ALLOWED_LINES = ("NetPulseBuildTools",)
+
 SKIP_DIRS = {".venv", "dist", "release", ".git", "__pycache__", ".pytest_cache"}
 TEXT_SUFFIX = {".py", ".md", ".iss", ".ps1", ".yml", ".yaml", ".spec",
                ".txt", ".isl", ".json"}
@@ -150,7 +154,14 @@ def main() -> int:
         except OSError:
             continue
         if OLD_BRAND in s:
-            leftovers.append(p.relative_to(ROOT))
+            # 逐行判断，允许兼容性探测路径存在
+            bad = [
+                ln for ln in s.splitlines()
+                if OLD_BRAND in ln
+                and not any(a in ln for a in ALLOWED_LINES)
+            ]
+            if bad:
+                leftovers.append(p.relative_to(ROOT))
     failures += 0 if check("全项目无旧品牌残留", not leftovers,
                            f"{len(leftovers)} 个文件") else 1
     for p in leftovers[:8]:
