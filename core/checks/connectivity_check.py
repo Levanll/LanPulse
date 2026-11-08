@@ -50,18 +50,25 @@ class ConnectivityCheck:
     category = "check.connectivity.category"
 
     def run(self, ctx: DiagnosticContext) -> CheckResult:
+        # 探测目标与阈值全部来自区域剖面：中国用 223.5.5.5 / 百度，
+        # 欧美用 1.1.1.1 / Google。硬编码任一地区的目标都会在跨地域时误判。
+        #
+        # **必须先取 profile，再开计时器。** 首次取 profile 会触发区域自动识别，
+        # 它会 TCP 握手测 cn / global / apac 三组锚点；在 8.8.8.8 / 9.9.9.9 不可达
+        # 的网络上（国内很常见）实测耗时 12s 以上，远超本项 10s 的 TOTAL_BUDGET。
+        # 若把这段共享的准备时间算进来，预算会在第一个 TCP 探测之前就被判超时，
+        # 于是每次冷启动首次体检都输出"结论不完整"的 SKIP——而网络其实是好的。
+        # 区域识别是一次性的全局准备，不属于本检测项的探测开销。
+        profile = ctx.profile
+        ping_target = profile.ping_targets[0][0]
+        tcp_targets = profile.tcp_targets
+        dns_probe_name = profile.resolve_domains[0]
+
         started = time.perf_counter()
         metrics: list[Metric] = []
         problems: list[str] = []
         advice: list[str] = []
         severity = Severity.OK
-
-        # 探测目标与阈值全部来自区域剖面：中国用 223.5.5.5 / 百度，
-        # 欧美用 1.1.1.1 / Google。硬编码任一地区的目标都会在跨地域时误判。
-        profile = ctx.profile
-        ping_target = profile.ping_targets[0][0]
-        tcp_targets = profile.tcp_targets
-        dns_probe_name = profile.resolve_domains[0]
 
         # ---- 1. IP 层 ----
         ping_stats = _netprobe.ping(ping_target, count=PING_COUNT,

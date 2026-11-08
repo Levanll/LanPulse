@@ -37,7 +37,14 @@ API = "https://api.github.com"
 UPLOAD = "https://uploads.github.com"
 OWNER = "Levanll"
 REPO = "LanPulse"
-VERSION = "1.1.0"
+
+# 版本号从 branding 读，不在这里写死（同 publish_github.py 的理由：
+# 硬编码的版本号必然在下次发版时漏改）。
+import sys as _sys2  # noqa: E402
+
+_sys2.path.insert(0, str(ROOT))
+from core.branding import VERSION  # noqa: E402
+
 TAG = f"v{VERSION}"
 OLD_TAG = "v1.0.0"
 

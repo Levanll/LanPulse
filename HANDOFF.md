@@ -2,7 +2,7 @@
 
 > 面向：接手 continua 开发的新会话
 > 更新时间：2026-11-08
-> 当前版本：LanPulse v1.1.0（已发布）
+> 当前版本：LanPulse v1.2.0
 
 ---
 
@@ -30,7 +30,7 @@ cd D:\Documents\deepseek-harness\default-workspace\lanpulse
 $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe main.py
 
-# 全量测试（103 项）
+# 全量测试（128 项）
 .\.venv\Scripts\python.exe -m pytest tests -q
 
 # 发布前必跑：一致性检查
@@ -68,7 +68,7 @@ lanpulse/
 │   ├── registry.py            检测项注册与执行（run_check 统一包裹）
 │   ├── scenarios.py           6 个场景定义
 │   ├── rootcause.py           根因分析引擎（10 条规则）+ 健康分
-│   ├── region.py              CN / Global / APAC 三套探测剖面
+│   ├── region.py              11 套区域探测剖面
 │   ├── i18n.py / i18n_args.py 文案与占位符解析
 │   ├── settings.py            设置持久化
 │   ├── action_ids.py          15 个修复动作的元数据
@@ -78,7 +78,7 @@ lanpulse/
 │   ├── i18n_zh.py / i18n_en.py  1332 条文案，两语言 key 必须完全一致
 │   ├── report.py              HTML / JSON / TXT 导出
 │   └── ui/                    PySide6 界面（9 个页面）
-├── tests/                     103 项
+├── tests/                     128 项
 ├── tools/                     开发与运维脚本
 ├── installer/                 Inno Setup 脚本与资源
 └── docs/                      设计、使用、实测、对比分析
@@ -141,27 +141,27 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 | 14 项检测 | 全部实现并实测 |
 | 6 个场景 | 已接入 UI，场景过滤生效 |
 | 根因引擎（10 规则） | 已实现，29 项单元测试覆盖 |
-| 15 个修复动作 | 已实现，DNS 类做过闭环实测 |
+| 15 个修复动作 | 已实现，9 个动作做过闭环实测 |
 | 备份回滚 | 已实现，含 ADS 路径修复 |
-| 跨区域自适应 | 三套剖面已实现 |
-| 中英双语 | 1332 条，key 集合完全一致 |
+| 跨区域自适应 | 11 套剖面已实现 |
+| 中英双语 | 1377 条，key 集合完全一致 |
 | 报告导出 | HTML / JSON / TXT |
-| CI + Release 工作流 | 已配置，v1.0.0 时验证通过 |
-| GitHub 发布 | v1.1.0 已发布，哈希校验通过 |
+| CI + Release 工作流 | 已配齐四道门禁，v1.2.0 起由 CI 强制 |
+| GitHub 发布 | v1.1.0 已发布；v1.2.0 待发布 |
 
 ### 仓库
 
 - 地址：https://github.com/Levanll/LanPulse
-- 分支：`main`，4 个提交（历史已重写为干净起点）
-- Release：`v1.1.0`，3 个资产
+- 分支：`main`（历史已重写为干净起点）
+- Release：`v1.1.0`，3 个资产（v1.2.0 发布后为最新）
 - 数据目录：`%LOCALAPPDATA%\LanPulse`
 - Packages：**有意保持为空**（本项目为 Windows exe，GitHub Packages 的五种 registry 均不匹配）
 
 ### 已知限制（诚实记录，不要当作已解决）
 
 1. **语言切换不重译已生成的详情文案** —— 结论摘要会跟随，`detail` 字段不会。重新体检即可。
-2. **区域自动识别是启发式的** —— 综合实测延迟 + 系统时区 + 系统语言。跨国专线、海外 VPS 可能判错，设置页可手动固定。
-3. **闭环实测只覆盖 DNS 类动作** —— `dns.set_public` / `dns.flush_cache` 做过完整的 应用 → 回滚 零差异验证。注册表类、文件类、网络配置类动作**未做真实闭环**。
+2. **区域自动识别是启发式的** —— 延迟打分只能判定「在不在中国大陆」（东亚各区互差十几毫秒、anycast 处处就近，光靠延迟分不出国家），具体区域靠时区与语言。跨国专线、海外 VPS 可能判错，设置页可手动固定。香港与大陆共用 `China Standard Time`，仅凭时区无法区分。
+3. **闭环实测覆盖 9/15 个动作** —— v1.1.0 验证了 `dns.set_public` / `dns.flush_cache`；v1.2.0 补测 `proxy.reset` / `firewall.ensure_enabled` / `tcp.autotuning` / `hosts.clean_bad_lines`，4/4 通过。仍未做真实闭环：`tcp.reset_stack`、`adapter.reset_stack`（需重启）、`mtu.optimize`、`adapter.renew_dhcp`（会断网）、`netbios.disable_public`（导入缺陷已修但未跑闭环）、`hosts.restore_default`、`proxy.restore_auto`、`firewall` 之外的其余项。
 4. **回滚失败路径未测试** —— 代码有处理，但没有构造过"回滚中途失败"的场景。
 5. **无代码签名** —— SmartScreen 会提示"未知发布者"。
 6. **VPN 网卡不参与优化决策** —— 刻意为之，避免破坏既有 VPN 配置。
@@ -174,7 +174,7 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 
 | 层级 | 命令 | 说明 |
 |---|---|---|
-| 单元 | `pytest tests -q` | 103 项，<1 秒 |
+| 单元 | `pytest tests -q` | 128 项，<2 秒 |
 | 一致性 | `tools/check_consistency.py` | 检测项数/版本/品牌/截图/i18n 交叉校验 |
 | 端到端 | 构建 → 安装 → 启动 → 卸载 | 手动，见下 |
 
@@ -186,7 +186,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 
 # 2. 静默安装到临时目录
 $tmp = "$env:TEMP\lp_test"
-Start-Process release\LanPulse-1.1.0-Setup.exe `
+Start-Process release\LanPulse-1.2.0-Setup.exe `
   -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=`"$tmp`"" -Wait
 
 # 3. 启动，确认无崩溃、窗口标题正确、数据目录写入 LanPulse
@@ -196,7 +196,7 @@ Start-Process "$tmp\LanPulse.exe"
 Start-Process "$tmp\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES" -Wait
 ```
 
-**验证要点**：数据目录应为 `%LOCALAPPDATA%\LanPulse`，且**不应**创建 `NetPulse` 目录。
+**验证要点**：数据目录应为 `%LOCALAPPDATA%\LanPulse`，且**不应**创建 `NetPulse` 目录。<!-- brand-ok -->
 
 ### 截图生成
 

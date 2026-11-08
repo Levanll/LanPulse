@@ -205,7 +205,10 @@ SHOTS = [
     (5, "backup"),
     (6, "diagnose"),
     (7, "report"),
-    (8, "settings-zh"),
+    # 这里是页面名，不是文件名。曾经写成 "settings-zh"，导致英文模式
+    # 拼出 screenshot-settings-zh-en.png 这种不存在的图，而 README_EN.md
+    # 引用的 screenshot-settings-en.png 永远不会更新。
+    (8, "settings"),
 ]
 
 
@@ -250,7 +253,12 @@ def main() -> int:
         app.processEvents()
         time.sleep(0.4)
         app.processEvents()
-        suffix = "" if lang == "zh" else f"-{lang}"
+        # 命名规则：英文一律加 -en；中文默认不加后缀，但 settings 页例外
+        # （README.md 引用的是 screenshot-settings-zh.png）。
+        if lang == "zh":
+            suffix = "-zh" if name == "settings" else ""
+        else:
+            suffix = f"-{lang}"
         path = out_dir / f"screenshot-{name}{suffix}.png"
         win.grab().save(str(path))
         print(f"  saved {path.name}")

@@ -3,6 +3,79 @@
 本文件格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.0] - 2026-11-08
+
+区域剖面从 3 套粗粒度拆成 11 套；补齐 4 个修复动作的闭环实测，
+过程中发现并修复 2 个真实缺陷。
+
+### 新增
+
+**区域剖面扩充到 11 套**
+
+原来只有中国大陆 / 全球 / 亚太三套，其中"全球"同时覆盖欧美，"亚太"同时覆盖
+日韩与东南亚——这两个区域的网络环境差异很大，用同一套探测目标会误判。
+
+现在按主要国家/地区细分：
+
+| 区域 | 解析域名示例 | 本地 DNS 方案 |
+|---|---|---|
+| 中国大陆 | baidu / qq / taobao | 阿里 + 腾讯 |
+| 中国香港 | google / cloudflare | 香港本地 |
+| 中国台湾 | google / pchome | 中华电信 HiNet |
+| 日本 | yahoo.co.jp / rakuten | 日本本地 |
+| 韩国 | naver / daum | 韩国本地 |
+| 新加坡 / 东南亚 | google / shopee.sg | 新加坡本地 |
+| 印度 / 南亚 | google / flipkart | 印度本地 |
+| 澳大利亚 / 新西兰 | abc.net.au / gumtree | 澳洲本地 |
+| 北美 | google / github | 北美本地 |
+| 欧洲 | google / heise.de | 欧盟公共 DNS（GDPR） |
+| 其他地区 | 全球 anycast | 全球公共 DNS |
+
+每个区域有独立的解析域名、ICMP/TCP 探测目标、MTU 目标、DNS 方案与判定阈值。
+`其他地区` 承接识别不出的网络，阈值取最宽松一档，保证不会把正常网络误报成故障。
+
+**DNS 归属表扩充**：新增香港、台湾、新加坡、印度、澳洲、欧洲、北美共 15 个地址，
+界面不再对这些地区显示"自定义/运营商"。
+
+**兼容旧设置**：v1.1.0 存的 `global` / `apac` 自动映射到 `其他地区`，升级后不会
+出现空白选项。
+
+### 修复
+
+- **`firewall.ensure_enabled` 与 `netbios.disable_public` 在真实执行时必然崩溃**
+  （`NameError: name 'pw' is not defined`）。两个模块顶部漏了
+  `from .. import platform_win as pw`，而 `apply()` 里调用了 `pw.now()`。
+  单元测试与 dry-run 都覆盖不到（dry-run 不走 `apply()`），只有真实提权执行才暴露。
+  后者在 UI 里是默认勾选项，影响面更大。
+- **首次体检把「外网连通性」误判为 SKIP**。区域自动识别在
+  `8.8.8.8` / `9.9.9.9` 不可达的网络上要跑 12s+，而它被算进了 connectivity 的
+  10s 预算，导致真正的探测一个都没跑。已改为先取区域剖面再开计时器。
+- **区域识别耗时 12.5s → 1.3–1.5s**。根因有三处：`min()` 完整消费生成器导致
+  三个全球锚点全测；锚点顺序把最难达的放最前；每个端口盲重试两次。
+  改为「取到第一个可用锚点即停 + 每端口单次尝试」。
+
+### 测试
+
+- 新增 `tests/test_repair_contracts.py`：静态 AST 扫描「使用了但未导入的
+  模块级别名」，并校验 action_ids 与实现一一对应、回滚分派覆盖全部 kind。
+- 新增 `tests/test_checks.py`：锁住「单项预算不含共享准备时间」这条口径。
+- 新增 `tools/closed_loop_v12.py`：四动作闭环测试（构造故障态 → 修复 → 回滚）。
+- 测试总数 103 → 128。
+
+### 闭环实测
+
+`proxy.reset` → `firewall.ensure_enabled` → `tcp.autotuning` →
+`hosts.clean_bad_lines` 四项全部完成真实提权闭环，**4/4 通过**。
+每项：apply 生效 + verify 通过 + 回滚后与构造态零差异 + 复原后与原始态零差异。
+详见 [docs/闭环实测报告.md](docs/闭环实测报告.md)。
+
+### 已知限制（更新）
+
+- 仍有 4 个动作未做真实闭环：`tcp.reset_stack`、`adapter.reset_stack`、
+  `mtu.optimize`、`adapter.renew_dhcp`，以及刚修好导入缺陷的 `netbios.disable_public`
+- 区域自动识别仍是启发式的：香港与大陆共用 `China Standard Time` 时区键，
+  无法仅凭时区区分，需靠语言与延迟打分补充判断
+
 ## [1.1.0] - 2026-11-08
 
 首个公开版本。
@@ -84,10 +157,14 @@ DNS 解析慢 / 网页分层断层 / MTU 不匹配 / 缓冲膨胀 / 防火墙关
 MTU 目标、DNS 方案与判定阈值均不同。自动识别综合实测延迟、系统时区与
 系统语言，全部在本机完成，不向任何第三方查询 IP 归属。
 
+> v1.2.0 起已扩充为 11 套区域剖面，见上方 1.2.0 章节。
+
 ### 国际化
 
 中文 / English 双语，1327 条文案，设置内实时切换无需重启。
 两语言 key 集合完全一致，缺失会显式暴露而非静默回退。
+
+> v1.2.0 起为 1377 条。
 
 ### 分发
 

@@ -20,13 +20,12 @@ TAGLINE_ZH = "网络体检与一键修复"
 TAGLINE_EN = "Network checkup & one-click repair"
 
 #: 版本号。与 installer/LanPulse.iss 的 MyAppVersion 保持一致。
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 #: 窗口标题（单实例检测按此查找窗口，改这里即可全局生效）
 WINDOW_TITLE = f"{NAME} - {TAGLINE_ZH}"
 
 #: 应用数据目录名（%LOCALAPPDATA%\<这个>）
-DATA_DIR_NAME = "LanPulse"
 DATA_DIR_NAME = "LanPulse"
 
 #: 发布标签前缀（用于 Git tag 与 Release 标题）

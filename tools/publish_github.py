@@ -47,12 +47,19 @@ API = "https://api.github.com"
 UPLOAD_API = "https://uploads.github.com"
 UA = "LanPulse-Publisher/1.0"
 
-VERSION = "1.0.0"
+# 版本号从 branding 读，不在这里写死。
+# 曾经这里是 VERSION = "1.0.0" 硬编码，发 v1.1.0 时忘了改，脚本就会去上传
+# 不存在的 1.0.0 资产、建错 tag。版本号只允许有一个来源。
+import sys as _sys2  # noqa: E402
+
+_sys2.path.insert(0, str(ROOT))
+from core.branding import VERSION  # noqa: E402
+
 TAG = f"v{VERSION}"
 
 ASSETS = [
-    "LanPulse-1.0.0-Setup.exe",
-    "LanPulse-1.0.0-win64-portable.zip",
+    f"LanPulse-{VERSION}-Setup.exe",
+    f"LanPulse-{VERSION}-win64-portable.zip",
 ]
 
 

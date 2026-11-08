@@ -21,16 +21,20 @@ import time
 from ctypes import wintypes
 from dataclasses import dataclass
 
-try:  # 作为 netpulse.app.sysutil 导入
+try:  # 作为包内模块导入
     from core import platform_win as pw
     from core.backup import BACKUP_ROOT_NAME
+    from core.branding import WINDOW_TITLE
 except ImportError:  # 以 PYTHONPATH=<项目根> 导入 app.sysutil
     from core import platform_win as pw  # type: ignore[no-redef]
     from core.backup import BACKUP_ROOT_NAME  # type: ignore[no-redef]
+    from core.branding import WINDOW_TITLE  # type: ignore[no-redef]
 
-log = logging.getLogger("netpulse.sysutil")
+log = logging.getLogger("lanpulse.sysutil")
 
-WINDOW_TITLE = "LanPulse - 网络体检与优化"
+#: 窗口标题的唯一来源是 core.branding，这里只是转发。
+#: 曾经硬编码为 "LanPulse - 网络体检与优化"（旧标语），改名后没有跟随，
+#: 导致单实例检测按错误的标题找窗口。
 
 # UAC 被用户拒绝时 ShellExecuteW 的返回码是 ERROR_CANCELLED(1223) 对应的
 # SE_ERR_ 值区间（<= 32）。这个值不需要单独判断，只要 <= 32 就视为未提权成功。

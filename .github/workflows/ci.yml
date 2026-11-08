@@ -43,6 +43,32 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: python -m pytest tests -q
 
+      # 下面三步是 HANDOFF 第八节"提交前必跑"里的发布门禁。
+      # 拆成独立 step 而不是合并成一个 run 块：runner 的默认 shell 是
+      # pwsh，多行 run 块里前一条命令失败不会让 PowerShell 中断，
+      # 只有最后一条的退出码会被采信 —— 合并写法会静默放行失败的门禁。
+      # 独立 step 由 runner 逐个检查退出码，任一失败即 job 失败。
+      - name: Check consistency
+        env:
+          PYTHONPATH: "."
+          # 脚本内部已调 tools/_console.py 的 setup_console()，
+          # 这里再显式指定一次是双保险：runner 默认代码页是 cp1252，
+          # 任何一处忘记 setup_console 的中文 print 都会让 step 直接崩。
+          PYTHONIOENCODING: utf-8
+        run: python tools/check_consistency.py
+
+      - name: Audit i18n
+        env:
+          PYTHONPATH: "."
+          PYTHONIOENCODING: utf-8
+        run: python tools/audit_i18n.py
+
+      - name: Privacy audit
+        env:
+          PYTHONPATH: "."
+          PYTHONIOENCODING: utf-8
+        run: python tools/privacy_audit.py
+
       - name: Byte-compile all sources
         # 等价于语法检查：任何 SyntaxError / 缩进错误在这里就会失败，
         # 不必等到打包阶段才发现。

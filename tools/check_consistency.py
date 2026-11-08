@@ -32,7 +32,7 @@ except ImportError:
     pass
 
 from core.action_ids import ACTIONS  # noqa: E402
-from core.branding import DATA_DIR_NAME, NAME, VERSION  # noqa: E402
+from core.branding import DATA_DIR_NAME, NAME, VERSION, WINDOW_TITLE  # noqa: E402
 from core.registry import load_checks  # noqa: E402
 from core.scenarios import SCENARIOS  # noqa: E402
 
@@ -42,6 +42,19 @@ OLD_BRAND = "Net" + "Pulse"
 #: 允许出现旧名的上下文：仅限"兼容旧版构建工具目录"的探测路径。
 #: 这类引用不是品牌残留，而是为了在老机器上仍能找到 Inno Setup。
 ALLOWED_LINES = ("NetPulseBuildTools",)
+
+#: 行内豁免标记：只有提到旧名的那一行显式携带该标记时才放过。
+#:
+#: 为什么需要它：文档里有"正当提到旧名"的句子，最典型的是验收要点
+#: 「数据目录应为 …，且不应创建旧品牌目录」——它说的是旧目录不该被创建，
+#: 语义与品牌残留正好相反。没有豁免机制时这类句子会让门禁长期红灯，而
+#: 长期红灯的结果是大家习惯性忽略这条检查，真正的残留反而被漏掉。
+#:
+#: 为什么用行内标记而不是文件白名单：白名单按整个文件豁免，登记一次就能
+#: 让该文件后续所有残留蒙混过关。行内标记把豁免面收敛到单行，同文件里新
+#: 增的残留仍然会被抓住，检查强度不降。标记写在 HTML 注释里，Markdown
+#: 渲染时不可见，不影响文档可读性。
+INLINE_OK_MARK = "brand-ok"
 
 SKIP_DIRS = {".venv", "dist", "release", ".git", "__pycache__", ".pytest_cache"}
 TEXT_SUFFIX = {".py", ".md", ".iss", ".ps1", ".yml", ".yaml", ".spec",
@@ -145,6 +158,52 @@ def main() -> int:
         ok = f"## [{VERSION}]" in txt
         failures += 0 if check(f"CHANGELOG 顶部含 {VERSION}", ok) else 1
 
+    # 版本号第三个来源：i18n 里的 "app.version"。
+    # 它曾经是一条死文案（界面版本走 main_window.py 的 f"v{VERSION}"），
+    # 却因为长得像"需要同步的地方"而被误改、也一度漏改。现在已删除；
+    # 这条检查防止有人再把它加回来——重复的版本来源必然再次不同步。
+    stale_version_hits = []
+    for name in ("app/i18n_zh.py", "app/i18n_en.py"):
+        path = ROOT / name
+        if not path.is_file():
+            continue
+        if re.search(r'"app\.version"\s*:', path.read_text(encoding="utf-8")):
+            stale_version_hits.append(name)
+    failures += 0 if check("版本号只有一个来源（无 app.version 死文案）",
+                           not stale_version_hits, ", ".join(stale_version_hits)) else 1
+
+    # 窗口标题与标语同理：只能在 core/branding.py 定义。
+    # app/sysutil.py 曾经硬编码 "LanPulse - 网络体检与优化"（重命名前的旧标语），
+    # 而单实例检测正是按这个常量找窗口——标题一旦对不上，二次启动就会静默多开。
+    title_violations = []
+    for rel in ("app/sysutil.py", "app/i18n_zh.py", "app/i18n_en.py", "main.py",
+                "app/ui/main_window.py"):
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        # 允许 import 与注释，只禁止重新定义标题字符串
+        if re.search(r'^\s*WINDOW_TITLE\s*=\s*["\']', text, re.M):
+            title_violations.append(f"{rel}(WINDOW_TITLE)")
+        if re.search(r'"app\.window_title"\s*:', text):
+            title_violations.append(f"{rel}(app.window_title)")
+    failures += 0 if check("窗口标题只有一个来源（core/branding.py）",
+                           not title_violations, ", ".join(title_violations)) else 1
+
+    # Windows 标题必须与 branding 完全一致，否则 FindWindowW 找不到窗口
+    try:
+        sys.path.insert(0, str(ROOT))
+        os.environ.setdefault("PYTHONPATH", ".")
+        import importlib
+
+        sysutil = importlib.import_module("app.sysutil")
+        same = getattr(sysutil, "WINDOW_TITLE", None) == WINDOW_TITLE
+        failures += 0 if check("app.sysutil.WINDOW_TITLE == branding.WINDOW_TITLE",
+                               same, f"{getattr(sysutil, 'WINDOW_TITLE', None)!r}") else 1
+    except Exception as exc:  # noqa: BLE001 - 导入失败本身就是不一致
+        failures += 0 if check("app.sysutil.WINDOW_TITLE == branding.WINDOW_TITLE",
+                               False, f"{type(exc).__name__}: {exc}") else 1
+
     # ---- 3. 品牌名残留 ----
     print("\n[3] 品牌名")
     leftovers = []
@@ -154,11 +213,13 @@ def main() -> int:
         except OSError:
             continue
         if OLD_BRAND in s:
-            # 逐行判断，允许兼容性探测路径存在
+            # 逐行判断：既允许兼容性探测路径存在，也放过显式登记为正当
+            # 提及旧名的行（行内豁免标记见 INLINE_OK_MARK 的注释）。
             bad = [
                 ln for ln in s.splitlines()
                 if OLD_BRAND in ln
                 and not any(a in ln for a in ALLOWED_LINES)
+                and INLINE_OK_MARK not in ln
             ]
             if bad:
                 leftovers.append(p.relative_to(ROOT))

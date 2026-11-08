@@ -55,13 +55,35 @@ jobs:
           "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "版本号: $v"
 
+      # 发布门禁。曾经把 pytest 与 audit_i18n 写在同一个 pwsh run 块里，
+      # 问题在于 PowerShell 遇到非零退出的外部命令不会中断，runner 只采信
+      # 整块最后一条命令的退出码 —— 也就是说 pytest 挂了、audit_i18n 通过，
+      # 这一步仍显示成功，会直接把有问题的代码发出去。
+      # 拆成独立 step 后由 runner 逐个校验退出码，任一失败即终止 job。
       - name: 运行测试
-        shell: pwsh
         env:
           PYTHONPATH: "."
-        run: |
-          python -m pytest tests -q
-          python tools/audit_i18n.py
+        run: python -m pytest tests -q
+
+      - name: 一致性检查
+        env:
+          PYTHONPATH: "."
+          # runner 默认代码页是 cp1252，脚本内部已调 setup_console()，
+          # 这里再显式指定一次，避免任何中文 print 把门禁本身弄崩。
+          PYTHONIOENCODING: utf-8
+        run: python tools/check_consistency.py
+
+      - name: i18n 完整性
+        env:
+          PYTHONPATH: "."
+          PYTHONIOENCODING: utf-8
+        run: python tools/audit_i18n.py
+
+      - name: 隐私核查
+        env:
+          PYTHONPATH: "."
+          PYTHONIOENCODING: utf-8
+        run: python tools/privacy_audit.py
 
       - name: 打包 exe
         run: python -m PyInstaller build.spec --noconfirm --clean
