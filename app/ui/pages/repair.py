@@ -71,6 +71,9 @@ def localized_meta(meta: ActionMeta) -> ActionMeta:
         requires_elevation=meta.requires_elevation,
         default_selected=meta.default_selected,
         conflicts_with=meta.conflicts_with,
+        # 必须原样带过去：漏掉它会让「需要重启」的警告在翻译后的副本里消失，
+        # 而那正是用户最需要看到的一条边界说明。
+        needs_restart=meta.needs_restart,
     )
 
 
@@ -120,6 +123,16 @@ class ActionRow(QWidget):
         self.desc.setObjectName("Caption")
         self.desc.setWordWrap(True)
         body.addWidget(self.desc)
+
+        # 需要重启的动作必须把「回滚只在重启前有效」这条边界摆到界面上。
+        # 只在代码注释里写是不够的——用户看不到，会以为它和其它动作一样
+        # 可以完全撤销。这是产品承诺的诚实边界，不是警告装饰。
+        if meta.needs_restart:
+            self.restart_warn = QLabel(t("action.needs_restart"))
+            self.restart_warn.setStyleSheet(f"color:{T.DANGER};")
+            self.restart_warn.setFont(ui_font(8))
+            self.restart_warn.setWordWrap(True)
+            body.addWidget(self.restart_warn)
 
         self.preview_label = QLabel("")
         self.preview_label.setFont(mono_font(8))

@@ -283,6 +283,10 @@ class MainWindow(QMainWindow):
             self.backup_page.refresh()
         if idx == self.PAGE_REPORT:
             self.report_page.refresh_audit()
+        if idx == self.SETTINGS_INDEX:
+            # 区域识别结果来自最近一次体检的上下文。用户可能在体检前就进来过
+            # 设置页（那时只有本地推断），体检后再进来应当看到更新的依据。
+            self.settings_page.refresh_region_hint()
 
     # ------------------------------------------------------------------ #
     # 国际化

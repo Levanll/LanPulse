@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import ast
+import os
 import sys
 from pathlib import Path
 
@@ -112,6 +113,61 @@ class TestActionIdConsistency:
 
         extra = [aid for aid in REGISTRY.ids() if aid not in ACTIONS]
         assert not extra, f"这些动作有实现但没在 action_ids 里登记：{extra}"
+
+
+class TestRestartBoundary:
+    """「需要重启」的动作必须把回滚边界讲清楚。
+
+    重置协议栈这类动作在重启前无法观测效果，而且**回滚也只在重启前有效**：
+    重启后协议栈已按新状态重建，导回旧注册表并不能撤销已生效的状态。
+    若界面不说明，用户会以为它和其它动作一样可以完全回滚——这是对
+    「可回滚」这条产品承诺的过度承诺。
+    """
+
+    def test_reset_stack_actions_flagged(self):
+        from core.action_ids import ACTIONS
+
+        for aid in ("tcp.reset_stack", "adapter.reset_stack"):
+            assert ACTIONS[aid].needs_restart is True, f"{aid} 应标记 needs_restart"
+
+    def test_restart_flag_is_not_overused(self):
+        """不能为了保险把普通动作也标成需要重启，那会让警告失去意义。"""
+        from core.action_ids import ACTIONS
+
+        flagged = {aid for aid, m in ACTIONS.items() if m.needs_restart}
+        assert flagged == {"tcp.reset_stack", "adapter.reset_stack"}, \
+            f"needs_restart 标记范围变化：{flagged}"
+
+    def test_description_mentions_rollback_boundary(self):
+        """描述文本必须自己讲清回滚边界，不能只靠界面上的那行警告。
+
+        报告导出、日志、非 UI 场景都读 description，它们看不到 UI 警告。
+        """
+        from core.action_ids import ACTIONS
+
+        for aid in ("tcp.reset_stack", "adapter.reset_stack"):
+            desc = ACTIONS[aid].description
+            assert "回滚" in desc, f"{aid} 的描述未提到回滚边界"
+
+    def test_localized_meta_preserves_needs_restart(self):
+        """翻译副本必须带上 needs_restart。
+
+        曾经 localized_meta 逐字段重建 ActionMeta，新增字段会被静默丢掉——
+        结果就是「警告只在中文下出现、英文下消失」这类难查的问题。
+        """
+        from core.action_ids import ACTIONS
+
+        try:
+            from PySide6.QtWidgets import QApplication  # noqa: F401
+        except ImportError:
+            pytest.skip("PySide6 不可用")
+
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+        from app.ui.pages.repair import localized_meta
+
+        for aid, meta in ACTIONS.items():
+            assert localized_meta(meta).needs_restart == meta.needs_restart, \
+                f"{aid} 翻译后丢失 needs_restart"
 
     def test_rollback_dispatch_covers_all_backup_kinds(self):
         """每个动作 backup() 产出的 kind，回滚层都必须能分派。

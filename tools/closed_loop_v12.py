@@ -68,10 +68,14 @@ HOSTS_MARKER = "0.0.0.0 example.com"  # 典型屏蔽记录，example.com 是保�
 
 #: 本轮验证的动作，按风险从低到高
 TARGETS = [
+    # v1.1.0 只验证过 DNS 类；v1.2.0 补前四项（4/4 通过）。
     "proxy.reset",
     "firewall.ensure_enabled",
     "tcp.autotuning",
     "hosts.clean_bad_lines",
+    # 第一档遗留项：只改一个 DWORD，且回滚有两条路径
+    # （reg export 成功则整项导入；原本不存在则删除值），验证成本最低。
+    "netbios.disable_public",
 ]
 
 
@@ -199,11 +203,50 @@ def _restore_hosts(original_b64: str) -> None:
         fh.write(raw)
 
 
+def _fabricate_netbios() -> str:
+    """把主网卡的 NetbiosOptions 置为「启用」（1），让动作有东西可修。
+
+    本机实测原值是 0（由 DHCP 决定），动作只在值 != 2 时才真的动手，
+    所以不构造也能验证。但若某台机器上原本就是 2，动作会 SKIPPED、
+    闭环就退化成空转——因此这里显式构造，保证前置条件恒定。
+    """
+    from core.repair.netbios_actions import _read_options, _write_options
+    from core.repair.base import require_primary
+
+    ctx = DiagnosticContext()
+    guid = require_primary(ctx).interface_guid
+    original = _read_options(guid)
+    _write_options(guid, 1)  # 1 = 启用
+    # 用 JSON 保存，None 表示"原本不存在"，还原时必须删值而不是写 0
+    return json.dumps({"guid": guid, "value": original})
+
+
+def _restore_netbios(original_json: str) -> None:
+    import winreg
+
+    from core.repair.netbios_actions import _full_path, _write_options
+
+    data = json.loads(original_json)
+    guid = data["guid"]
+    value = data["value"]
+    if value is None:
+        # 原本没有这个值：删掉我们写的，而不是写一个 0 冒充"原本是 0"
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, _full_path(guid), 0,
+                                winreg.KEY_SET_VALUE) as key:
+                winreg.DeleteValue(key, "NetbiosOptions")
+        except FileNotFoundError:
+            pass
+    else:
+        _write_options(guid, int(value))
+
+
 FABRICATE = {
     "proxy.reset": (_fabricate_proxy, _restore_proxy),
     "firewall.ensure_enabled": (_fabricate_firewall, _restore_firewall),
     "tcp.autotuning": (_fabricate_tcp, _restore_tcp),
     "hosts.clean_bad_lines": (_fabricate_hosts, _restore_hosts),
+    "netbios.disable_public": (_fabricate_netbios, _restore_netbios),
 }
 
 
@@ -368,7 +411,7 @@ def main() -> int:
     open(LOG_PATH, "w", encoding="utf-8").close()
 
     log("=" * 70)
-    log("LanPulse v1.2.0 闭环测试：四个待补测动作")
+    log("LanPulse 闭环测试：此前未验证的修复动作")
     log(f"时间：{time.strftime('%Y-%m-%d %H:%M:%S')}")
     log("=" * 70)
 

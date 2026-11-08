@@ -45,8 +45,8 @@ LanPulse 是一款 Windows 上的网络诊断与修复工具：打开就自动�
 
 | 产物 | 适用 |
 |---|---|
-| `LanPulse-1.2.0-Setup.exe` | 安装到本机，带开始菜单快捷方式 |
-| `LanPulse-1.2.0-win64-portable.zip` | 绿色版，解压即用，不写注册表 |
+| `LanPulse-1.2.1-Setup.exe` | 安装到本机，带开始菜单快捷方式 |
+| `LanPulse-1.2.1-win64-portable.zip` | 绿色版，解压即用，不写注册表 |
 
 > **首次运行会弹「Windows 已保护你的电脑」。** 点 **更多信息 → 仍要运行**。这是因为当前发布版本没有代码签名证书，不是软件有问题。
 
@@ -449,6 +449,6 @@ LanPulse/
 
 <div align="center">
 
-**[⬆ 回到顶部](#netpulse)**　｜　[English](README_EN.md)　｜　[报告问题](https://github.com/Levanll/LanPulse/issues/new/choose)
+**[⬆ 回到顶部](#lanpulse)**　｜　[English](README_EN.md)　｜　[报告问题](https://github.com/Levanll/LanPulse/issues/new/choose)
 
 </div>

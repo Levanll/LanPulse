@@ -157,6 +157,32 @@ def _firewall() -> dict:
     return result
 
 
+def _netbios(primary) -> dict:
+    """主网卡的 NetbiosOptions 与所在的注册表项。
+
+    这个值决定局域网内是否广播主机名，是 netbios.disable_public 的作用对象。
+    不采集它就无法对那个动作做机器判决，只能靠人眼看。
+    """
+    if not primary or not primary.interface_guid:
+        return {"error": "no primary adapter"}
+    import winreg
+
+    core = primary.interface_guid.strip().strip("{}").upper()
+    path = rf"SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces\Tcpip_{{{core}}}"
+    out = {"path": f"HKLM\\{path}", "value": None}
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path) as key:
+            try:
+                out["value"] = int(winreg.QueryValueEx(key, "NetbiosOptions")[0])
+            except FileNotFoundError:
+                out["value"] = None      # 键在但值不存在
+    except FileNotFoundError:
+        out["value"] = "key_missing"     # 整个键不存在
+    except OSError as exc:
+        out["error"] = str(exc)
+    return out
+
+
 def take_snapshot() -> dict:
     adapters = pw.collect_adapters()
     primary = pw.primary_adapter(adapters)
@@ -176,6 +202,7 @@ def take_snapshot() -> dict:
         "tcp": _tcp_global(),
         "mtu": _mtu(primary),
         "firewall": _firewall(),
+        "netbios": _netbios(primary),
     }
 
 
@@ -221,6 +248,10 @@ def diff(before: dict, after: dict) -> int:
         (after.get("mtu") or {}).get("mtu"))
 
     cmp("防火墙", before.get("firewall"), after.get("firewall"))
+
+    cmp("NetBIOS NetbiosOptions",
+        (before.get("netbios") or {}).get("value"),
+        (after.get("netbios") or {}).get("value"))
 
     # 逐网卡 DNS 对比
     da = before.get("dns_all_interfaces") or {}

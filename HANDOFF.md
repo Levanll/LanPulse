@@ -2,7 +2,7 @@
 
 > 面向：接手 continua 开发的新会话
 > 更新时间：2026-11-08
-> 当前版本：LanPulse v1.2.0
+> 当前版本：LanPulse v1.2.1
 
 ---
 
@@ -30,7 +30,7 @@ cd D:\Documents\deepseek-harness\default-workspace\lanpulse
 $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe main.py
 
-# 全量测试（136 项）
+# 全量测试（140 项）
 .\.venv\Scripts\python.exe -m pytest tests -q
 
 # 发布前必跑：一致性检查
@@ -78,7 +78,7 @@ lanpulse/
 │   ├── i18n_zh.py / i18n_en.py  1332 条文案，两语言 key 必须完全一致
 │   ├── report.py              HTML / JSON / TXT 导出
 │   └── ui/                    PySide6 界面（9 个页面）
-├── tests/                     136 项
+├── tests/                     140 项
 ├── tools/                     开发与运维脚本
 ├── installer/                 Inno Setup 脚本与资源
 └── docs/                      设计、使用、实测、对比分析
@@ -141,13 +141,13 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 | 14 项检测 | 全部实现并实测 |
 | 6 个场景 | 已接入 UI，场景过滤生效 |
 | 根因引擎（10 规则） | 已实现，29 项单元测试覆盖 |
-| 15 个修复动作 | 已实现，9 个动作做过闭环实测 |
+| 15 个修复动作 | 已实现，10 个动作做过闭环实测 |
 | 备份回滚 | 已实现，含 ADS 路径修复 |
 | 跨区域自适应 | 12 套剖面已实现 |
 | 中英双语 | 1377 条，key 集合完全一致 |
 | 报告导出 | HTML / JSON / TXT |
 | CI + Release 工作流 | 已配齐四道门禁，v1.2.0 起由 CI 强制 |
-| GitHub 发布 | v1.1.0 已发布；v1.2.0 待发布 |
+| GitHub 发布 | v1.1.0 / v1.2.0 已发布；v1.2.1 待发布 |
 
 ### 仓库
 
@@ -161,7 +161,7 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 
 1. **语言切换不重译已生成的详情文案** —— 结论摘要会跟随，`detail` 字段不会。重新体检即可。
 2. **区域自动识别是启发式的** —— 延迟打分只能判定「在不在中国大陆」（东亚各区互差十几毫秒、anycast 处处就近，光靠延迟分不出国家），具体区域靠时区与语言。跨国专线、海外 VPS 可能判错，设置页可手动固定。大陆、香港、澳门共用 `China Standard Time`，港澳完全依赖系统地区码判定。
-3. **闭环实测覆盖 9/15 个动作** —— v1.1.0 验证了 `dns.set_public` / `dns.flush_cache`；v1.2.0 补测 `proxy.reset` / `firewall.ensure_enabled` / `tcp.autotuning` / `hosts.clean_bad_lines`，4/4 通过。仍未做真实闭环：`tcp.reset_stack`、`adapter.reset_stack`（需重启）、`mtu.optimize`、`adapter.renew_dhcp`（会断网）、`netbios.disable_public`（导入缺陷已修但未跑闭环）、`hosts.restore_default`、`proxy.restore_auto`、`firewall` 之外的其余项。
+3. **闭环实测覆盖 10/15 个动作** —— v1.1.0 验证了 `dns.set_public` / `dns.flush_cache`；v1.2.0 补测 `proxy.reset` / `firewall.ensure_enabled` / `tcp.autotuning` / `hosts.clean_bad_lines`（4/4）；v1.2.1 补测 `netbios.disable_public`（5/5）。仍未做真实闭环：`tcp.reset_stack`、`adapter.reset_stack`（需重启，且回滚只在重启前有效）、`mtu.optimize`、`adapter.renew_dhcp`（会断网）、`dns.restore_dhcp`、`hosts.restore_default`、`proxy.restore_auto`、`firewall` 之外的其余项。
 4. **回滚失败路径未测试** —— 代码有处理，但没有构造过"回滚中途失败"的场景。
 5. **无代码签名** —— SmartScreen 会提示"未知发布者"。
 6. **VPN 网卡不参与优化决策** —— 刻意为之，避免破坏既有 VPN 配置。
@@ -174,7 +174,7 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 
 | 层级 | 命令 | 说明 |
 |---|---|---|
-| 单元 | `pytest tests -q` | 136 项，<2 秒 |
+| 单元 | `pytest tests -q` | 140 项，<2 秒 |
 | 一致性 | `tools/check_consistency.py` | 检测项数/版本/品牌/截图/i18n 交叉校验 |
 | 端到端 | 构建 → 安装 → 启动 → 卸载 | 手动，见下 |
 
@@ -186,7 +186,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 
 # 2. 静默安装到临时目录
 $tmp = "$env:TEMP\lp_test"
-Start-Process release\LanPulse-1.2.0-Setup.exe `
+Start-Process release\LanPulse-1.2.1-Setup.exe `
   -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=`"$tmp`"" -Wait
 
 # 3. 启动，确认无崩溃、窗口标题正确、数据目录写入 LanPulse

@@ -20,6 +20,13 @@ class ActionMeta:
     default_selected: bool = True
     # 同一秒级事务内互相冲突的动作（例如同时改 DNS 到两个不同方案）
     conflicts_with: tuple[str, ...] = ()
+    #: 该动作需要重启才能完全生效。
+    #:
+    #: 这个字段存在的理由：有些动作（重置协议栈）在重启前无法观测到效果，
+    #: 而且**回滚也只在重启前有效**——重启后协议栈已按新状态重建，
+    #: 再导回旧注册表并不能把已生效的协议栈状态"撤销"。
+    #: 界面必须把这条边界讲清楚，不能让用户以为它和其它动作一样可完全回滚。
+    needs_restart: bool = False
 
 
 ACTIONS: dict[str, ActionMeta] = {
@@ -81,8 +88,10 @@ ACTIONS: dict[str, ActionMeta] = {
         title="重置 TCP/IP 协议栈",
         risk=RiskLevel.HIGH,
         description="等价于 netsh int ip reset + winsock reset，用于修复协议栈损坏。"
-                    "会要求重启计算机才能完全生效，因此默认不勾选。",
+                    "必须重启才能生效。注意：回滚只在重启前有效——重启后协议栈已按新状态"
+                    "重建，再导回旧注册表无法撤销已经生效的协议栈状态。因此默认不勾选。",
         default_selected=False,
+        needs_restart=True,
     ),
     # ---------------- 代理 ----------------
     "proxy.reset": ActionMeta(
@@ -110,8 +119,10 @@ ACTIONS: dict[str, ActionMeta] = {
         title="重置 Winsock 目录与防火墙规则",
         risk=RiskLevel.HIGH,
         description="netsh winsock reset 会清空第三方网络过滤驱动注册（部分安全软件需重装组件），"
-                    "并需要重启。默认不勾选。",
+                    "必须重启才能生效。注意：回滚只在重启前有效，重启后已重建的 Winsock 目录"
+                    "无法通过导回旧注册表撤销。默认不勾选。",
         default_selected=False,
+        needs_restart=True,
     ),
     # ---------------- MTU ----------------
     "mtu.optimize": ActionMeta(

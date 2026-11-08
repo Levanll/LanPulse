@@ -268,6 +268,43 @@ def main() -> int:
         failures += 1
         check("语言包可导入", False, str(exc))
 
+    # ---- 7. README 内部链接 ----
+    # 页内锚点与相对链接最容易在改名后失效，且没人会去点。
+    # 曾经两个 README 的「回到顶部」都指向旧品牌的小写锚点，全是断的；
+    # 品牌检查没抓到，因为它匹配的是驼峰写法，而锚点全小写。
+    print("\n[7] README 内部链接")
+    for readme_name in ("README.md", "README_EN.md"):
+        p = ROOT / readme_name
+        if not p.is_file():
+            continue
+        txt = p.read_text(encoding="utf-8")
+        # 页内锚点：只校验指向本文档标题的纯 #anchor
+        anchors = set(re.findall(r"\]\(#([A-Za-z0-9_-]+)\)", txt))
+        # GitHub 把标题转成锚点的规则：小写、空格转连字符。
+        # 本项目两个 README 的一级标题都是 "LanPulse"，故合法锚点即 lanpulse。
+        headings = re.findall(r"^#{1,6}\s+(.+)$", txt, re.M)
+        valid = {
+            re.sub(r"[^a-z0-9 _-]", "", h.lower()).strip().replace(" ", "-")
+            for h in headings
+        }
+        broken = sorted(a for a in anchors if a not in valid)
+        failures += 0 if check(f"{readme_name} 的 {len(anchors)} 个页内锚点有效",
+                               not broken, ", ".join(f"#{b}" for b in broken)) else 1
+
+        # 相对链接（不含 scheme 与纯锚点）：文件必须存在
+        rel = [m for m in re.findall(r"\]\(([^)#][^)]*)\)", txt)
+               if not m.startswith(("http://", "https://", "mailto:"))]
+        missing_files = []
+        for r in rel:
+            target = r.split("#", 1)[0]
+            if not target:
+                continue
+            if not (ROOT / target).exists():
+                missing_files.append(r)
+        failures += 0 if check(f"{readme_name} 的 {len(rel)} 个相对链接可达",
+                               not missing_files,
+                               ", ".join(missing_files[:3])) else 1
+
     print("\n" + "=" * 66)
     if failures == 0:
         print("全部通过。")

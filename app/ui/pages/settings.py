@@ -272,13 +272,77 @@ class SettingsPage(QWidget):
 
     def _update_region_hint(self) -> None:
         code = self.region_combo.currentData() or region_mod.REGION_AUTO
-        if code == region_mod.REGION_AUTO:
-            self.region_hint.setText(t("settings.region.auto_hint"))
-        else:
+        if code != region_mod.REGION_AUTO:
             prof = region_mod.get_profile(code)
             self.region_hint.setText(
                 t("settings.region.fixed_hint", region=t(prof.name_key))
             )
+            return
+        # 自动模式下要说清三件事：识别成了哪个区域、凭什么、以及港澳台盲区。
+        # 只写"根据时区自动判断"等于什么都没说——用户看不出判得对不对。
+        detected, basis = self._detect_region_basis()
+        if detected is None:
+            self.region_hint.setText(t("settings.region.auto_hint"))
+            return
+        lines = [
+            t("settings.region.detected", region=t(region_mod.region_display_key(detected))),
+            t("settings.region.basis", basis=basis),
+        ]
+        # 大陆 / 香港 / 澳门 共用 China Standard Time，是唯一需要额外说明的盲区
+        if detected in (region_mod.REGION_CN, region_mod.REGION_HK, region_mod.REGION_MO):
+            lines.append(t("settings.region.shared_tz"))
+        self.region_hint.setText("\n".join(lines))
+
+    def _detect_region_basis(self) -> tuple[str | None, str]:
+        """返回 (识别到的区域, 依据说明)。失败时返回 (None, "")。
+
+        复用缓存的结果，不在这里重新探测：设置页打开时不该触发一轮网络请求。
+        缓存在 AppState 体检时已由 DiagnosticContext 填好；若还没有（用户刚开
+        软件就进设置页），就用纯本地推断，明确告诉用户依据只有时区/语言。
+        """
+        ctx = getattr(self.state, "context", None)
+        if ctx is not None:
+            try:
+                key = ctx.region_key
+                ev = ctx.region_evidence or {}
+                return key, self._describe_basis(ev)
+            except Exception:  # noqa: BLE001 - 提示文案失败不该让设置页崩
+                pass
+        # 还没有体检上下文：纯本地推断，不发网络请求
+        try:
+            if self.settings.get("region", region_mod.REGION_AUTO) != region_mod.REGION_AUTO:
+                return None, ""
+            key, ev = region_mod.detect_region(probe=False)
+            return key, self._describe_basis(ev)
+        except Exception:  # noqa: BLE001
+            return None, ""
+
+    @staticmethod
+    def _describe_basis(evidence: dict) -> str:
+        """把 reason 字段翻译成一句人话。"""
+        reason = str(evidence.get("reason") or "")
+        tz = evidence.get("timezone") or ""
+        if reason.startswith("latency:cn_faster"):
+            cn = evidence.get("cn_anchor_ms")
+            return t("settings.region.basis.latency_cn",
+                     cn=f"{cn:.0f}" if isinstance(cn, (int, float)) else "—")
+        if reason.startswith("latency:not_cn"):
+            gl = evidence.get("global_anchor_ms")
+            return t("settings.region.basis.latency_not_cn",
+                     gl=f"{gl:.0f}" if isinstance(gl, (int, float)) else "—")
+        if reason.startswith("timezone:"):
+            return t("settings.region.basis.timezone", tz=tz or reason.split(":", 1)[1])
+        if reason == "locale":
+            return t("settings.region.basis.locale")
+        return t("settings.region.basis.none")
+
+    def refresh_region_hint(self) -> None:
+        """外部触发刷新区域提示（主窗口在切到设置页时调用）。
+
+        区域识别的依据来自最近一次体检的上下文；用户可能先开设置页（那时
+        只有本地推断），体检完再回来时应当看到带实测证据的新提示。
+        """
+        self._update_region_hint()
 
     # ------------------------------------------------------------------ #
     def retranslate(self) -> None:

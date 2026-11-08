@@ -378,11 +378,24 @@ CATALOG: dict[str, str] = {
     "settings.language.title": "Interface language",
     "settings.language.desc": "Applies immediately, no restart needed",
     "settings.language.auto": "Follow system",
+    "action.needs_restart": "⚠ Takes effect after a restart; rollback is only valid before restarting",
     "settings.region.title": "Network region",
     "settings.region.desc": "Chooses which probe targets and DNS plans are used",
     "settings.region.auto": "Detect automatically",
     "settings.region.auto_hint": "The region is inferred from time zone, system language and "
                                  "measured latency.",
+    "settings.region.detected": "Detected as “{region}”",
+    "settings.region.basis": "Based on: {basis}",
+    "settings.region.basis.timezone": "system time zone {tz}",
+    "settings.region.basis.latency_cn": "latency pointing to mainland China (China anchor {cn} ms)",
+    "settings.region.basis.latency_not_cn": "latency pointing outside mainland China "
+                                            "(global anchor {gl} ms)",
+    "settings.region.basis.locale": "system language",
+    "settings.region.basis.none": "no time zone or latency available; fell back to the "
+                                  "most lenient profile",
+    "settings.region.shared_tz": "Mainland China, Hong Kong and Macau share one time zone, so "
+                                 "the time zone alone cannot separate them — this result relies "
+                                 "on the system region code. If it is wrong, pick a region above.",
     "settings.region.fixed_hint": "Pinned to “{region}”; probe targets and DNS plans for that "
                                   "region are used.",
     "settings.autoscan.title": "Checkup on startup",
