@@ -23,13 +23,13 @@
 
 LanPulse 是一款 Windows 上的网络诊断与修复工具：打开就自动体检，14 个检测单元跑完给你一个 0-100 的健康分和一句话结论；哪里不对，它直接列出可执行的修复项，**改之前一定先备份，改完一定读回校验，随时可以一键还原**。
 
-它和其它「一键修复网络」工具的区别只有三点：**它知道自己在地球上哪个位置**（CN / Global / APAC 三套探测与 DNS 推荐剖面，不会拿「百度能不能解析」去判欧洲网络）、**它的每一次系统修改都可回滚**（备份是纯文本 + `.reg`，软件坏了也能手工还原）、**它什么都不上传**（无遥测、无账号、无云端）。
+它和其它「一键修复网络」工具的区别只有三点：**它知道自己在地球上哪个位置**（中国大陆 / 港澳台 / 日韩 / 东南亚 / 南亚 / 澳洲 / 北美 / 欧洲 共 11 套探测与 DNS 推荐剖面，不会拿「百度能不能解析」去判欧洲网络）、**它的每一次系统修改都可回滚**（备份是纯文本 + `.reg`，软件坏了也能手工还原）、**它什么都不上传**（无遥测、无账号、无云端）。
 
 ## 核心卖点
 
 | | 卖点 | 具体是什么 | 为什么重要 |
 |---|---|---|---|
-| 🌍 | **跨区域自适应** | 内置 `cn` / `global` / `apac` 三套剖面：探测域名、ICMP/TCP 目标、MTU 探测地址、DNS 推荐方案、解析与延迟分级阈值全部按区域切换；自动识别（延迟锚点 → 时区 → 系统语言）后也可手动固定 | 网络工具最容易犯的错是「用本地的尺子量全世界的网络」。在法兰克福拿 `223.5.5.5` 当基准、拿 `www.baidu.com` 当解析样本，只会把正常网络判成故障 |
+| 🌍 | **跨区域自适应** | 内置 11 套剖面（中国大陆 / 香港 / 台湾 / 日本 / 韩国 / 新加坡 / 印度 / 澳洲 / 北美 / 欧洲 / 其他）：探测域名、ICMP/TCP 目标、MTU 探测地址、DNS 推荐方案、解析与延迟分级阈值全部按区域切换；自动识别（延迟锚点 → 时区 → 系统语言）后也可手动固定 | 网络工具最容易犯的错是「用本地的尺子量全世界的网络」。在法兰克福拿 `223.5.5.5` 当基准、拿 `www.baidu.com` 当解析样本，只会把正常网络判成故障 |
 | 🛡️ | **先备份后修改** | 15 个修复动作全部走同一个备份层；备份记录的是「恢复所需的全部状态」（含 `was_dhcp` 这类模式标记），不是差异；任一备份项失败 → **整轮不执行任何修改** | 半套备份意味着一半配置无法恢复，比什么都不做更危险 |
 | ↩️ | **一切可回滚** | 备份是 `manifest.json` + 原始文件快照 + `reg export` 的 `.reg` + 结构化 `state/*.json`；回滚按 `kind` 由唯一分派实现反序恢复，回滚前校验 sha256 | 软件坏了、系统重装了，`hosts.bak` 复制回去、`.reg` 双击导入，备份依然有用 |
 | 🧪 | **演练模式** | 「先演练」完整走一遍备份流程（建会话、逐项备份、落盘校验），但不调用任何 `apply()` | 第一次使用就能确认备份链路是通的，再决定要不要真的改 |
@@ -45,8 +45,8 @@ LanPulse 是一款 Windows 上的网络诊断与修复工具：打开就自动�
 
 | 产物 | 适用 |
 |---|---|
-| `LanPulse-1.1.0-Setup.exe` | 安装到本机，带开始菜单快捷方式 |
-| `LanPulse-1.1.0-win64-portable.zip` | 绿色版，解压即用，不写注册表 |
+| `LanPulse-1.2.0-Setup.exe` | 安装到本机，带开始菜单快捷方式 |
+| `LanPulse-1.2.0-win64-portable.zip` | 绿色版，解压即用，不写注册表 |
 
 > **首次运行会弹「Windows 已保护你的电脑」。** 点 **更多信息 → 仍要运行**。这是因为当前发布版本没有代码签名证书，不是软件有问题。
 
@@ -105,7 +105,7 @@ LanPulse 是一款 Windows 上的网络诊断与修复工具：打开就自动�
 - **根因分析**：把多个异常合成 1-3 条结论，带置信度、证据链与已排除项
 - **三层深检**：网页分层计时（卡在哪一层）、DNS 篡改比对、下载时延迟评级
 - **修复可逆**：每次修改前自动备份，备份为纯文本与 .reg，软件损坏也能手工还原
-- **跨区域**：中国大陆 / 国际 / 亚太三套探测剖面，探测目标与阈值随区域变化
+- **跨区域**：11 套探测剖面，探测目标与阈值随区域变化
 - **中英双语**：运行时切换，缺失文案显式可见而非静默回退
 - **可审计**：audit.jsonl 记录每一次系统修改
 
@@ -234,21 +234,33 @@ verify() × N      读回校验，写入 ActionResult.verified
 
 第 3 条是有意为之：用猜的 MTU 改系统会造成 PMTU 黑洞（能解析但打不开网页），比不改更糟。
 
-### 跨区域 · 三套剖面
+### 跨区域 · 十一套剖面
 
 | 剖面 | 解析探测域名 | 连通性锚点 | DNS 推荐（按序） | 解析分级阈值 |
 |---|---|---|---|---|
-| `cn` 中国大陆 | `www.baidu.com` `www.qq.com` `www.taobao.com` `www.bilibili.com` | 223.5.5.5 / 119.29.29.29 | 阿里+腾讯 → 114 → 境外公共 → DHCP | 60 / 150 / 400 ms |
-| `global` 全球 | `www.google.com` `www.cloudflare.com` `www.wikipedia.org` `www.github.com` | 1.1.1.1 / 8.8.8.8 | Cloudflare+Google → Quad9 → OpenDNS → DHCP | 80 / 200 / 500 ms |
-| `apac` 亚太 | `www.google.com` `www.cloudflare.com` `www.yahoo.co.jp` `www.naver.com` | 1.1.1.1 / 9.9.9.9 | Cloudflare+Google → 日韩本地 → Quad9 → DHCP | 80 / 200 / 500 ms |
+| `cn` 中国大陆 | baidu / qq / taobao / bilibili | 223.5.5.5 / 119.29.29.29 | 阿里+腾讯 → 114 → 境外公共 → DHCP | 60 / 150 / 400 ms |
+| `hk` 中国香港 | google / cloudflare / yahoo.com.hk | 1.1.1.1 / 9.9.9.9 | Cloudflare+Google → 香港本地 → Quad9 → DHCP | 50 / 140 / 400 ms |
+| `tw` 中国台湾 | google / cloudflare / yahoo.com.tw / pchome | 1.1.1.1 / 168.95.1.1 | Cloudflare+Google → HiNet → Quad9 → DHCP | 50 / 140 / 400 ms |
+| `jp` 日本 | google / cloudflare / yahoo.co.jp / rakuten | 1.1.1.1 / 202.12.27.33 | 日本本地 → Cloudflare+Google → Quad9 → DHCP | 50 / 140 / 400 ms |
+| `kr` 韩国 | google / cloudflare / naver / daum | 1.1.1.1 / 168.126.63.1 | 韩国本地 → Cloudflare+Google → Quad9 → DHCP | 50 / 140 / 400 ms |
+| `sg` 新加坡/东南亚 | google / cloudflare / straitstimes / shopee.sg | 1.1.1.1 / 165.21.83.88 | Cloudflare+Google → 新加坡本地 → Quad9 → DHCP | 60 / 160 / 450 ms |
+| `in` 印度/南亚 | google / cloudflare / flipkart / rediff | 1.1.1.1 / 49.44.44.44 | Cloudflare+Google → 印度本地 → Quad9 → DHCP | 80 / 220 / 600 ms |
+| `au` 澳大利亚/新西兰 | google / cloudflare / abc.net.au / gumtree | 1.1.1.1 / 139.130.4.5 | Cloudflare+Google → 澳洲本地 → Quad9 → DHCP | 80 / 200 / 550 ms |
+| `na` 北美 | google / cloudflare / wikipedia / github | 1.1.1.1 / 8.8.8.8 | Cloudflare+Google → Quad9 → OpenDNS → 北美本地 → DHCP | 60 / 160 / 450 ms |
+| `eu` 欧洲 | google / cloudflare / wikipedia / heise.de | 1.1.1.1 / 9.9.9.9 | 欧盟公共（GDPR） → Cloudflare+Google → Quad9 → DHCP | 60 / 170 / 450 ms |
+| `other` 其他地区 | google / cloudflare / wikipedia / github | 1.1.1.1 / 9.9.9.9 | Cloudflare+Google → Quad9 → OpenDNS → DHCP | 90 / 230 / 600 ms |
+
+`other` 承接所有识别不出的网络，阈值取最宽松一档——**识别不出的用户不应该被误报成故障**。
 
 识别顺序（先强后弱，全部本地信号，**不请求任何地理 IP 数据库或定位 API**）：
 
-1. **延迟打分**：分别测国内锚点与全球 anycast 锚点的 TCP 握手 RTT，差距超过 60 ms 才采信；亚太再对比日韩锚点（阈值 40 ms）
-2. **时区**：读 `TimeZoneKeyName`（不用 `StandardName`——中文系统上它是 `@tzres.dll,-572` 这种不可匹配的资源串）
-3. **系统语言**：`zh → cn`，`ja/ko/th/vi/id → apac`，其余 `global`
+1. **延迟打分**：测国内锚点与全球 anycast 锚点的 TCP 握手 RTT，差距超过 60 ms 才采信。这一步只能判定「在不在中国大陆」——东亚各区彼此只差十几毫秒，anycast 又处处就近，光靠延迟分不出具体国家
+2. **时区**：读 `TimeZoneKeyName`（不用 `StandardName`——中文系统上它是 `@tzres.dll,-572` 这种不可匹配的资源串），可精确到国家
+3. **系统语言**：`zh-CN → cn`、`zh-TW → tw`、`zh-HK → hk`、`ja → jp`、`ko → kr`、`en-AU → au`、`en-GB → eu`、欧洲各语种 → `eu`，其余 → `other`
 
 用户随时可在 **设置 → 区域** 固定剖面，检测立即跟随。**接口、阈值、判定逻辑是通用的，只有「往哪里打」是地域相关的**——全部收敛在 `core/region.py` 一个模块里。
+
+> 已知局限：香港与大陆共用 `China Standard Time` 时区键，无法仅凭时区区分，需靠语言与延迟打分补充判断。
 
 ### 安全 · 三道防线
 
@@ -375,7 +387,7 @@ LanPulse/
 
 - [ ] **代码签名** —— 目前未签名，首次运行会被 SmartScreen 拦一次；计划申请 OV/EV 证书后签名发布
 - [ ] **管理员权限下的完整闭环验证** —— 现有测试覆盖纯逻辑与只读路径，「执行 → 回滚」的完整闭环仍以人工 `dry_run` 为主，需要在真实管理员环境补验
-- [ ] **区域剖面扩充** —— 目前是 CN / Global / APAC 三套粗粒度剖面，后续按实际需求细分（例如欧洲与北美分开打点）
+- [x] **区域剖面扩充** —— v1.2.0 已完成，从 3 套粗粒度细分为 11 套
 
 ### 考虑中
 

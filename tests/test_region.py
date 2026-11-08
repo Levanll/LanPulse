@@ -34,7 +34,8 @@ class TestProfiles:
                    for ip, _ in cn.ping_targets)
 
     def test_global_uses_anycast_anchors(self):
-        g = R.PROFILES[R.REGION_GLOBAL]
+        """非大陆区域必须至少有一个全球 anycast 锚点可用于连通性基准。"""
+        g = R.PROFILES[R.REGION_NA]
         assert any(ip in ("1.1.1.1", "8.8.8.8", "9.9.9.9") for ip, _ in g.ping_targets)
 
     def test_every_profile_has_dhcp_plan(self):
@@ -65,19 +66,78 @@ class TestProfiles:
     def test_global_tolerates_higher_latency_than_cn(self):
         """跨境的基线延迟更高，阈值必须放宽，否则正常网络会被误判。"""
         cn = R.PROFILES[R.REGION_CN]
-        g = R.PROFILES[R.REGION_GLOBAL]
-        assert g.rtt_normal_ms > cn.rtt_normal_ms
-        assert g.resolve_normal_ms > cn.resolve_normal_ms
+        na = R.PROFILES[R.REGION_NA]
+        assert na.rtt_normal_ms > cn.rtt_normal_ms
+        assert na.resolve_normal_ms > cn.resolve_normal_ms
+
+    def test_other_is_most_tolerant_profile(self):
+        """other 是兜底剖面，阈值必须是所有区域里最宽松的。
+
+        它承接"识别不出来"的所有网络。若它的阈值比某个真实区域更严，
+        就无法识别区域的用户会被误报成网络故障——这比判错区域更糟。
+        """
+        other = R.PROFILES[R.REGION_OTHER]
+        for key in R.ALL_REGIONS:
+            p = R.PROFILES[key]
+            assert other.rtt_normal_ms >= p.rtt_normal_ms, f"{key} 的 RTT 阈值比 other 更宽松"
+            assert other.resolve_normal_ms >= p.resolve_normal_ms, \
+                f"{key} 的解析阈值比 other 更宽松"
+
+
+class TestRegionGranularity:
+    """11 套剖面的结构约束。
+
+    v1.2.0 把原来的 cn / global / apac 三套粗粒度剖面拆成按国家/地区细分。
+    这些测试锁住"拆分后没有退化"：每个区域确实不同、没有重复、旧值能兼容。
+    """
+
+    def test_eleven_regions(self):
+        assert len(R.ALL_REGIONS) == 11
+
+    def test_no_duplicate_profiles(self):
+        """不能有两个区域共用完全相同的探测目标——那等于没拆分。"""
+        seen = {}
+        for key in R.ALL_REGIONS:
+            p = R.PROFILES[key]
+            sig = (p.resolve_domains, p.ping_targets)
+            assert sig not in seen, f"{key} 与 {seen[sig]} 的探测目标完全相同"
+            seen[sig] = key
+
+    def test_every_region_has_distinct_name_key(self):
+        keys = [R.PROFILES[k].name_key for k in R.ALL_REGIONS]
+        assert len(set(keys)) == len(keys)
+
+    def test_legacy_names_normalize(self):
+        """v1.1.0 存的 global / apac 必须能映射到新值，不能变成空。"""
+        assert R.normalize_region("global") in R.ALL_REGIONS
+        assert R.normalize_region("apac") in R.ALL_REGIONS
+        assert R.normalize_region("apac") == R.REGION_OTHER
+
+    def test_unknown_region_normalizes_to_other(self):
+        assert R.normalize_region("mars") == R.REGION_OTHER
+        assert R.normalize_region("") == R.REGION_OTHER
+        assert R.normalize_region("auto") == R.REGION_AUTO
+
+    def test_get_profile_accepts_legacy_names(self):
+        """旧配置文件里的 global 不能让 get_profile 抛异常或返回 None。"""
+        assert R.get_profile("global").key == R.REGION_OTHER
+        assert R.get_profile("apac").key == R.REGION_OTHER
 
 
 class TestGetProfile:
-    def test_unknown_region_falls_back_global(self):
+    def test_unknown_region_falls_back_other(self):
         p = R.get_profile("mars")
-        assert p.key == R.REGION_GLOBAL
+        assert p.key == R.REGION_OTHER
 
     def test_known_region_returns_itself(self):
         for key in R.ALL_REGIONS:
             assert R.get_profile(key).key == key
+
+    def test_each_region_resolves_to_itself(self):
+        """逐区域验证，避免 ALL_REGIONS 与 PROFILES 的键漂移。"""
+        for key in R.ALL_REGIONS:
+            assert R.get_profile(key).key == key
+            assert R.region_display_key(key) == f"region.{key}"
 
 
 class TestVendorTable:
@@ -114,6 +174,97 @@ class TestRegionDetection:
     def test_probe_disabled_recorded_in_evidence(self):
         _, evidence = R.detect_region(probe=False)
         assert evidence["probe_enabled"] is False
+
+
+class TestAnchorProbing:
+    """锚点探测的成本契约。
+
+    区域识别是每次冷启动都要付一次的全局准备。它曾经耗时 12.5s：min() 把生成器
+    完整消费导致三个全球锚点全测（8.8.8.8 / 9.9.9.9 在国内被阻断，各付满超时），
+    外加每个端口盲重试。这些测试锁住"短路"与"不重复尝试"，防止改回去。
+    """
+
+    def test_first_rtt_stops_at_first_usable_anchor(self, monkeypatch):
+        """取到第一个可用锚点即返回，不得继续探测后面的。"""
+        probed: list[str] = []
+
+        def fake_rtt(host, **kwargs):
+            probed.append(host)
+            return 30.0 if host == "1.1.1.1" else None
+
+        monkeypatch.setattr(R, "_rtt_ms", fake_rtt)
+        rtt, host = R._first_rtt_ms(("1.1.1.1", "8.8.8.8", "9.9.9.9"))
+
+        assert (rtt, host) == (30.0, "1.1.1.1")
+        assert probed == ["1.1.1.1"], "第一个锚点已可用，不应再探测其余锚点"
+
+    def test_first_rtt_skips_unreachable_anchors(self, monkeypatch):
+        """前面的锚点不可达时继续找下一个，全部失败返回 (None, "")。"""
+        calls: list[str] = []
+
+        def fake_rtt(host, **kwargs):
+            calls.append(host)
+            return None
+
+        monkeypatch.setattr(R, "_rtt_ms", fake_rtt)
+
+        assert R._first_rtt_ms(("1.1.1.1", "8.8.8.8")) == (None, "")
+        assert calls == ["1.1.1.1", "8.8.8.8"]
+
+    def test_rtt_does_not_retry_after_port_failure(self, monkeypatch):
+        """单个端口失败后直接换下一个端口，不对同一端口重试。
+
+        盲目重试是被阻断锚点把耗时放大数倍的原因。
+        """
+        import socket
+
+        connected: list[tuple] = []
+
+        class _FakeSock:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        def fake_create_connection(addr, timeout=None):
+            connected.append(addr)
+            if addr[1] == 443:
+                raise OSError("blocked")
+            return _FakeSock()
+
+        monkeypatch.setattr(socket, "create_connection", fake_create_connection)
+        rtt = R._rtt_ms("1.1.1.1")
+
+        assert rtt is not None
+        # 443 只试一次就放弃，然后 80 成功；总共两次连接
+        assert [p for _, p in connected] == [443, 80]
+
+    def test_rtt_returns_none_when_all_ports_fail(self, monkeypatch):
+        import socket
+
+        attempts: list[tuple] = []
+
+        def fake_create_connection(addr, timeout=None):
+            attempts.append(addr)
+            raise OSError("blocked")
+
+        monkeypatch.setattr(socket, "create_connection", fake_create_connection)
+
+        assert R._rtt_ms("8.8.8.8") is None
+        assert len(attempts) == 2, "443 与 80 各试一次即放弃，不应重复尝试"
+
+    def test_region_verdict_unchanged_by_probe_cost(self, monkeypatch):
+        """优化探测成本不能改变判定结论：cn 锚点快就仍判 cn。"""
+        def fake_rtt(host, **kwargs):
+            return {"223.5.5.5": 8.0, "1.1.1.1": 130.0}.get(host)
+
+        monkeypatch.setattr(R, "_rtt_ms", fake_rtt)
+        key, evidence = R.detect_region(probe=True)
+
+        assert key == R.REGION_CN
+        assert evidence["reason"] == "latency:cn_faster"
+        assert evidence["global_anchor_host"] == "1.1.1.1"
 
 
 class TestNetworkEnvironment:

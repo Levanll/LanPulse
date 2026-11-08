@@ -23,13 +23,13 @@
 
 LanPulse is a Windows network diagnostic and repair tool. It scans your machine the moment you open it, runs 14 checks, and hands you a 0-100 health score with a one-line verdict. Whatever is broken, it lists the concrete repair actions — and **every change is backed up first, read back and verified after, and reversible at any time**.
 
-Three things separate it from the usual "one-click fix my network" utilities: **it knows where on Earth it is running** (three built-in profiles — CN / Global / APAC — so it never judges a European connection by whether `baidu.com` resolves), **every system change can be rolled back** (backups are plain text and `.reg` files you can restore by hand even if the app itself breaks), and **nothing ever leaves your machine** (no telemetry, no accounts, no cloud).
+Three things separate it from the usual "one-click fix my network" utilities: **it knows where on Earth it is running** (eleven built-in profiles — mainland China, Hong Kong, Taiwan, Japan, Korea, Singapore, India, Australia, North America, Europe and a catch-all — so it never judges a European connection by whether `baidu.com` resolves), **every system change can be rolled back** (backups are plain text and `.reg` files you can restore by hand even if the app itself breaks), and **nothing ever leaves your machine** (no telemetry, no accounts, no cloud).
 
 ## Why it's different
 
 | | Feature | What it actually is | Why it matters |
 |---|---|---|---|
-| 🌍 | **Region-aware by default** | Three profiles — `cn`, `global`, `apac` — that swap probe domains, ICMP/TCP targets, MTU probe address, recommended DNS presets, and the latency grading thresholds. Auto-detected (latency anchors → timezone → system locale), and pinnable by hand | The classic failure mode of network tools is measuring the whole world with a local ruler. Using `223.5.5.5` as a baseline and `www.baidu.com` as a resolve sample in Frankfurt will report a healthy connection as broken |
+| 🌍 | **Region-aware by default** | Eleven profiles — mainland China, Hong Kong, Taiwan, Japan, Korea, Singapore, India, Australia, North America, Europe and a catch-all — that swap probe domains, ICMP/TCP targets, MTU probe address, recommended DNS presets, and the latency grading thresholds. Auto-detected (latency anchors → timezone → system locale), and pinnable by hand | The classic failure mode of network tools is measuring the whole world with a local ruler. Using `223.5.5.5` as a baseline and `www.baidu.com` as a resolve sample in Frankfurt will report a healthy connection as broken |
 | 🛡️ | **Back up before touching anything** | All 15 repair actions go through a single backup layer. A backup captures *the complete state needed to restore* (including mode flags like `was_dhcp`), not a diff. If **any** backup item fails, **nothing is applied at all** | A half-finished backup means half your configuration can never be restored — worse than doing nothing |
 | ↩️ | **Everything rolls back** | Backups are a `manifest.json`, raw file snapshots, `reg export` `.reg` files, and structured `state/*.json`. Rollback dispatches on `kind` through one implementation, in reverse order, and verifies sha256 first | If the app is gone and Windows reinstalled, copying `hosts.bak` back and double-clicking a `.reg` still works |
 | 🧪 | **Dry-run mode** | "Dry run" walks the entire backup path — creates the session, backs up every item, writes the manifest — but never calls `apply()` | Confirm the backup chain actually works before you let it change anything |
@@ -45,8 +45,8 @@ Grab one of these from [Releases](https://github.com/Levanll/LanPulse/releases/l
 
 | Artifact | Use it if |
 |---|---|
-| `LanPulse-1.1.0-Setup.exe` | You want a normal install with a Start-menu shortcut |
-| `LanPulse-1.1.0-win64-portable.zip` | You want the portable build — unzip and run, no registry writes |
+| `LanPulse-1.2.0-Setup.exe` | You want a normal install with a Start-menu shortcut |
+| `LanPulse-1.2.0-win64-portable.zip` | You want the portable build — unzip and run, no registry writes |
 
 > **First launch will trip SmartScreen ("Windows protected your PC").** Click **More info → Run anyway**. Current builds are unsigned; that is all it means.
 
@@ -107,7 +107,7 @@ Click **Restart as administrator** in the bottom-left, accept the UAC prompt, op
 - **Root cause analysis**: collapses several anomalies into 1-3 findings with confidence, evidence chain, and what was already ruled out
 - **Three deep checks**: layered web timing (which stage stalls), DNS tampering comparison, latency under load
 - **Reversible repairs**: every change is backed up first as plain text and \.reg\ files, restorable even if the app itself breaks
-- **Region-aware**: separate CN / Global / APAC probe sets and thresholds
+- **Region-aware**: eleven probe sets and threshold profiles
 - **Bilingual**: switch at runtime; missing strings surface explicitly instead of silently falling back
 - **Auditable**: \udit.jsonl\ records every system change
 
@@ -234,21 +234,35 @@ report partial=True  if anything failed, say "roll back this session"
 
 Point 3 is deliberate: guessing an MTU creates a PMTU black hole (names resolve, pages never load), which is worse than leaving it alone.
 
-### Cross-region · three profiles
+### Cross-region · eleven profiles
 
 | Profile | Resolve probes | Reachability anchors | DNS presets (in order) | Resolve grading |
 |---|---|---|---|---|
-| `cn` Mainland China | `www.baidu.com` `www.qq.com` `www.taobao.com` `www.bilibili.com` | 223.5.5.5 / 119.29.29.29 | Alibaba+Tencent → 114 → overseas public → DHCP | 60 / 150 / 400 ms |
-| `global` | `www.google.com` `www.cloudflare.com` `www.wikipedia.org` `www.github.com` | 1.1.1.1 / 8.8.8.8 | Cloudflare+Google → Quad9 → OpenDNS → DHCP | 80 / 200 / 500 ms |
-| `apac` | `www.google.com` `www.cloudflare.com` `www.yahoo.co.jp` `www.naver.com` | 1.1.1.1 / 9.9.9.9 | Cloudflare+Google → regional KR/JP → Quad9 → DHCP | 80 / 200 / 500 ms |
+| `cn` Mainland China | baidu / qq / taobao / bilibili | 223.5.5.5 / 119.29.29.29 | Alibaba+Tencent → 114 → overseas public → DHCP | 60 / 150 / 400 ms |
+| `hk` Hong Kong | google / cloudflare / yahoo.com.hk | 1.1.1.1 / 9.9.9.9 | Cloudflare+Google → HK local → Quad9 → DHCP | 50 / 140 / 400 ms |
+| `tw` Taiwan | google / cloudflare / yahoo.com.tw / pchome | 1.1.1.1 / 168.95.1.1 | Cloudflare+Google → HiNet → Quad9 → DHCP | 50 / 140 / 400 ms |
+| `jp` Japan | google / cloudflare / yahoo.co.jp / rakuten | 1.1.1.1 / 202.12.27.33 | JP local → Cloudflare+Google → Quad9 → DHCP | 50 / 140 / 400 ms |
+| `kr` South Korea | google / cloudflare / naver / daum | 1.1.1.1 / 168.126.63.1 | KR local → Cloudflare+Google → Quad9 → DHCP | 50 / 140 / 400 ms |
+| `sg` Singapore / SEA | google / cloudflare / straitstimes / shopee.sg | 1.1.1.1 / 165.21.83.88 | Cloudflare+Google → SG local → Quad9 → DHCP | 60 / 160 / 450 ms |
+| `in` India / South Asia | google / cloudflare / flipkart / rediff | 1.1.1.1 / 49.44.44.44 | Cloudflare+Google → IN local → Quad9 → DHCP | 80 / 220 / 600 ms |
+| `au` Australia / NZ | google / cloudflare / abc.net.au / gumtree | 1.1.1.1 / 139.130.4.5 | Cloudflare+Google → AU local → Quad9 → DHCP | 80 / 200 / 550 ms |
+| `na` North America | google / cloudflare / wikipedia / github | 1.1.1.1 / 8.8.8.8 | Cloudflare+Google → Quad9 → OpenDNS → NA local → DHCP | 60 / 160 / 450 ms |
+| `eu` Europe | google / cloudflare / wikipedia / heise.de | 1.1.1.1 / 9.9.9.9 | EU public (GDPR) → Cloudflare+Google → Quad9 → DHCP | 60 / 170 / 450 ms |
+| `other` Other regions | google / cloudflare / wikipedia / github | 1.1.1.1 / 9.9.9.9 | Cloudflare+Google → Quad9 → OpenDNS → DHCP | 90 / 230 / 600 ms |
+
+`other` catches every network we cannot identify, with the loosest thresholds of any
+profile — **a user we fail to identify should never be told their network is broken**.
 
 Detection order, strongest signal first — all local, **no geo-IP database and no lookup API**:
 
-1. **Latency scoring** — TCP handshake RTT against a China anchor vs. global anycast anchors; a 60 ms gap is required before it is trusted, and APAC is distinguished from the rest by a 40 ms gap against KR/JP anchors
-2. **Timezone** — reads `TimeZoneKeyName` (not `StandardName`, which returns un-matchable resource strings like `@tzres.dll,-572` on localized Windows)
-3. **System locale** — `zh → cn`, `ja/ko/th/vi/id → apac`, everything else `global`
+1. **Latency scoring** — TCP handshake RTT against a China anchor vs. global anycast anchors; a 60 ms gap is required before it is trusted. This can only answer "am I in mainland China": East Asian regions differ by a dozen milliseconds from each other, and anycast is local everywhere, so latency alone cannot pin down a country
+2. **Timezone** — reads `TimeZoneKeyName` (not `StandardName`, which returns un-matchable resource strings like `@tzres.dll,-572` on localized Windows); precise down to the country
+3. **System locale** — `zh-CN → cn`, `zh-TW → tw`, `zh-HK → hk`, `ja → jp`, `ko → kr`, `en-AU → au`, `en-GB → eu`, European languages → `eu`, everything else → `other`
 
 You can pin the profile at **Settings → Region** and detection follows immediately. **The interfaces and grading logic are universal; only "where to aim" is regional** — and that lives in exactly one module, `core/region.py`.
+
+> Known limitation: Hong Kong and mainland China share the `China Standard Time` key, so
+> the timezone alone cannot tell them apart; locale and latency scoring fill the gap.
 
 ### Safety · three layers
 
@@ -378,7 +392,7 @@ Full history in **[CHANGELOG.md](CHANGELOG.md)**; binaries and per-release notes
 
 - [ ] **Code signing** — currently unsigned, so SmartScreen warns once on first launch; an OV/EV certificate is the plan
 - [ ] **Full elevated end-to-end validation** — the current suite covers pure logic and read-only paths; the full apply → rollback loop is still verified by manual dry runs and needs a real administrator environment
-- [ ] **More region profiles** — CN / Global / APAC are deliberately coarse; split them (e.g. Europe vs. North America) as real demand shows up
+- [x] **More region profiles** — done in v1.2.0: 3 coarse profiles split into 11
 
 ### Under consideration
 
