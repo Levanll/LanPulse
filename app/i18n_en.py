@@ -570,6 +570,7 @@ CATALOG: dict[str, str] = {
     "dns.vendor.korea": "Korean public DNS",
     "dns.vendor.jp": "Japanese public DNS",
     "dns.vendor.hk": "Hong Kong public DNS",
+    "dns.vendor.mo": "Macau public DNS",
     "dns.vendor.tw": "HiNet DNS (Taiwan)",
     "dns.vendor.sg": "Singapore public DNS",
     "dns.vendor.in": "Indian public DNS",
@@ -618,6 +619,9 @@ CATALOG: dict[str, str] = {
     "dns.plan.hk_local.tag": "Local · Hong Kong",
     "dns.plan.hk_local.desc": "Hong Kong ISP DNS resolves fastest locally; may slow down "
                               "once traffic leaves the region.",
+    "dns.plan.mo_local.name": "Macau local DNS",
+    "dns.plan.mo_local.tag": "Local · Macau",
+    "dns.plan.mo_local.desc": "Macau has only two fixed-line carriers, CTM and MTel, so local DNS resolves most accurately; international traffic usually exits via Hong Kong and may slow down outside the region.",
     "dns.plan.tw_local.name": "HiNet DNS",
     "dns.plan.tw_local.tag": "Local · Taiwan",
     "dns.plan.tw_local.desc": "Best local resolution in Taiwan with nearby CDN nodes; "
@@ -655,6 +659,7 @@ CATALOG: dict[str, str] = {
 
     "region.cn": "Mainland China",
     "region.hk": "Hong Kong, China",
+    "region.mo": "Macau, China",
     "region.tw": "Taiwan, China",
     "region.jp": "Japan",
     "region.kr": "South Korea",

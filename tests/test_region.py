@@ -91,8 +91,24 @@ class TestRegionGranularity:
     这些测试锁住"拆分后没有退化"：每个区域确实不同、没有重复、旧值能兼容。
     """
 
-    def test_eleven_regions(self):
-        assert len(R.ALL_REGIONS) == 11
+    def test_every_region_has_a_profile(self):
+        """ALL_REGIONS 与 PROFILES 必须完全对应，不多不少。
+
+        这里刻意不写死区域数量：v1.2.0 加了澳门就得改一次测试，而数量本身
+        不是契约，"每一个声明的区域都有剖面、每一个剖面都被声明"才是。
+        """
+        assert set(R.ALL_REGIONS) == set(R.PROFILES)
+        assert len(R.ALL_REGIONS) >= 3, "至少要有中国大陆 + 一个海外剖面 + other"
+
+    def test_greater_china_regions_present(self):
+        """港澳台必须各自独立。
+
+        它们共用 Windows 的 China Standard Time，若合并成一个剖面，
+        三地用户会被当成同一个网络环境，探测目标与阈值都不再适用。
+        """
+        for key in (R.REGION_CN, R.REGION_HK, R.REGION_MO, R.REGION_TW):
+            assert key in R.ALL_REGIONS, f"{key} 缺失"
+            assert R.get_profile(key).key == key
 
     def test_no_duplicate_profiles(self):
         """不能有两个区域共用完全相同的探测目标——那等于没拆分。"""
@@ -138,6 +154,96 @@ class TestGetProfile:
         for key in R.ALL_REGIONS:
             assert R.get_profile(key).key == key
             assert R.region_display_key(key) == f"region.{key}"
+
+
+class TestLocaleRegion:
+    """语言 → 区域的映射。
+
+    这是港澳台唯一的可靠区分手段：三地在 Windows 上都用
+    China Standard Time，时区键完全一样，只有系统地区码能把它们分开。
+    映射错了，三地用户就会拿到彼此的网络阈值。
+    """
+
+    def _patch_locale(self, monkeypatch, loc):
+        import locale
+
+        monkeypatch.setattr(locale, "getdefaultlocale", lambda *a, **k: (loc, None))
+        monkeypatch.delenv("LANG", raising=False)
+
+    def test_greater_china_locales_split_apart(self, monkeypatch):
+        cases = {
+            "zh_CN": R.REGION_CN,
+            "zh_SG": R.REGION_CN,
+            "zh_HK": R.REGION_HK,
+            "zh_MO": R.REGION_MO,
+            "zh_TW": R.REGION_TW,
+        }
+        for loc, expected in cases.items():
+            self._patch_locale(monkeypatch, loc)
+            assert R._locale_region() == expected, f"{loc} 应映射到 {expected}"
+
+    def test_macau_is_not_folded_into_hong_kong(self, monkeypatch):
+        """澳门曾经与香港合并在同一个分支里，这条测试锁住它们必须分开。"""
+        self._patch_locale(monkeypatch, "zh_MO")
+        assert R._locale_region() == R.REGION_MO
+        assert R._locale_region() != R.REGION_HK
+
+    def test_other_locales(self, monkeypatch):
+        cases = {
+            "ja_JP": R.REGION_JP,
+            "ko_KR": R.REGION_KR,
+            "th_TH": R.REGION_SG,
+            "hi_IN": R.REGION_IN,
+            "en_AU": R.REGION_AU,
+            "en_GB": R.REGION_EU,
+            "en_US": R.REGION_NA,
+            "de_DE": R.REGION_EU,
+            "sw_KE": R.REGION_OTHER,
+        }
+        for loc, expected in cases.items():
+            self._patch_locale(monkeypatch, loc)
+            assert R._locale_region() == expected, f"{loc} 应映射到 {expected}"
+
+
+class TestMacauProfile:
+    """澳门剖面的具体约束。"""
+
+    def test_macau_profile_complete(self):
+        p = R.PROFILES[R.REGION_MO]
+        assert len(p.resolve_domains) >= 2
+        assert len(p.dns_plans) >= 2
+        assert any(plan.is_dhcp for plan in p.dns_plans), "澳门剖面必须有 DHCP 回退"
+        assert p.resolve_excellent_ms < p.resolve_normal_ms < p.resolve_slow_ms
+        assert p.rtt_excellent_ms < p.rtt_normal_ms < p.rtt_slow_ms
+
+    def test_macau_dns_servers_are_macau_addresses(self):
+        """本地方案必须真的是澳门地址段，不能拿香港或大陆的充数。
+
+        澳门只有 CTM 与 MTel 两家固网运营商，地址集中在 202.175 / 182.93 /
+        205.198。用别处的地址会让「本地 DNS」名不副实。
+        """
+        from core.platform_win import is_valid_ipv4
+
+        p = R.PROFILES[R.REGION_MO]
+        local = [pl for pl in p.dns_plans if pl.plan_id == "mo_local"]
+        assert local, "缺少 mo_local 方案"
+        for srv in local[0].servers:
+            assert is_valid_ipv4(srv), f"非法 IP: {srv}"
+            assert srv.startswith(("202.175.", "182.93.", "205.198.")), \
+                f"{srv} 不属于澳门运营商地址段"
+
+    def test_macau_dns_is_in_vendor_table(self):
+        """本地 DNS 必须能被界面识别出归属，否则会显示「自定义/运营商」。"""
+        p = R.PROFILES[R.REGION_MO]
+        local = [pl for pl in p.dns_plans if pl.plan_id == "mo_local"][0]
+        for srv in local.servers:
+            assert p.vendor_key(srv) == "dns.vendor.mo", \
+                f"{srv} 未登记为澳门 DNS"
+
+    def test_macau_timezone_alias(self):
+        """IANA 的 Asia/Macau 与 Asia/Macao 都必须能识别。"""
+        for tz in ("Asia/Macau", "Asia/Macao", "Macao"):
+            assert R._TZ_HINTS.get(tz) == R.REGION_MO, f"{tz} 未映射到澳门"
 
 
 class TestVendorTable:

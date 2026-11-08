@@ -23,13 +23,13 @@
 
 LanPulse is a Windows network diagnostic and repair tool. It scans your machine the moment you open it, runs 14 checks, and hands you a 0-100 health score with a one-line verdict. Whatever is broken, it lists the concrete repair actions — and **every change is backed up first, read back and verified after, and reversible at any time**.
 
-Three things separate it from the usual "one-click fix my network" utilities: **it knows where on Earth it is running** (eleven built-in profiles — mainland China, Hong Kong, Taiwan, Japan, Korea, Singapore, India, Australia, North America, Europe and a catch-all — so it never judges a European connection by whether `baidu.com` resolves), **every system change can be rolled back** (backups are plain text and `.reg` files you can restore by hand even if the app itself breaks), and **nothing ever leaves your machine** (no telemetry, no accounts, no cloud).
+Three things separate it from the usual "one-click fix my network" utilities: **it knows where on Earth it is running** (twelve built-in profiles — mainland China, Hong Kong, Macau, Taiwan, Japan, Korea, Singapore, India, Australia, North America, Europe and a catch-all — so it never judges a European connection by whether `baidu.com` resolves), **every system change can be rolled back** (backups are plain text and `.reg` files you can restore by hand even if the app itself breaks), and **nothing ever leaves your machine** (no telemetry, no accounts, no cloud).
 
 ## Why it's different
 
 | | Feature | What it actually is | Why it matters |
 |---|---|---|---|
-| 🌍 | **Region-aware by default** | Eleven profiles — mainland China, Hong Kong, Taiwan, Japan, Korea, Singapore, India, Australia, North America, Europe and a catch-all — that swap probe domains, ICMP/TCP targets, MTU probe address, recommended DNS presets, and the latency grading thresholds. Auto-detected (latency anchors → timezone → system locale), and pinnable by hand | The classic failure mode of network tools is measuring the whole world with a local ruler. Using `223.5.5.5` as a baseline and `www.baidu.com` as a resolve sample in Frankfurt will report a healthy connection as broken |
+| 🌍 | **Region-aware by default** | Twelve profiles — mainland China, Hong Kong, Macau, Taiwan, Japan, Korea, Singapore, India, Australia, North America, Europe and a catch-all — that swap probe domains, ICMP/TCP targets, MTU probe address, recommended DNS presets, and the latency grading thresholds. Auto-detected (latency anchors → timezone → system locale), and pinnable by hand | The classic failure mode of network tools is measuring the whole world with a local ruler. Using `223.5.5.5` as a baseline and `www.baidu.com` as a resolve sample in Frankfurt will report a healthy connection as broken |
 | 🛡️ | **Back up before touching anything** | All 15 repair actions go through a single backup layer. A backup captures *the complete state needed to restore* (including mode flags like `was_dhcp`), not a diff. If **any** backup item fails, **nothing is applied at all** | A half-finished backup means half your configuration can never be restored — worse than doing nothing |
 | ↩️ | **Everything rolls back** | Backups are a `manifest.json`, raw file snapshots, `reg export` `.reg` files, and structured `state/*.json`. Rollback dispatches on `kind` through one implementation, in reverse order, and verifies sha256 first | If the app is gone and Windows reinstalled, copying `hosts.bak` back and double-clicking a `.reg` still works |
 | 🧪 | **Dry-run mode** | "Dry run" walks the entire backup path — creates the session, backs up every item, writes the manifest — but never calls `apply()` | Confirm the backup chain actually works before you let it change anything |
@@ -107,7 +107,7 @@ Click **Restart as administrator** in the bottom-left, accept the UAC prompt, op
 - **Root cause analysis**: collapses several anomalies into 1-3 findings with confidence, evidence chain, and what was already ruled out
 - **Three deep checks**: layered web timing (which stage stalls), DNS tampering comparison, latency under load
 - **Reversible repairs**: every change is backed up first as plain text and \.reg\ files, restorable even if the app itself breaks
-- **Region-aware**: eleven probe sets and threshold profiles
+- **Region-aware**: twelve probe sets and threshold profiles
 - **Bilingual**: switch at runtime; missing strings surface explicitly instead of silently falling back
 - **Auditable**: \udit.jsonl\ records every system change
 
@@ -234,12 +234,13 @@ report partial=True  if anything failed, say "roll back this session"
 
 Point 3 is deliberate: guessing an MTU creates a PMTU black hole (names resolve, pages never load), which is worse than leaving it alone.
 
-### Cross-region · eleven profiles
+### Cross-region · twelve profiles
 
 | Profile | Resolve probes | Reachability anchors | DNS presets (in order) | Resolve grading |
 |---|---|---|---|---|
 | `cn` Mainland China | baidu / qq / taobao / bilibili | 223.5.5.5 / 119.29.29.29 | Alibaba+Tencent → 114 → overseas public → DHCP | 60 / 150 / 400 ms |
 | `hk` Hong Kong | google / cloudflare / yahoo.com.hk | 1.1.1.1 / 9.9.9.9 | Cloudflare+Google → HK local → Quad9 → DHCP | 50 / 140 / 400 ms |
+| `mo` Macau | google / cloudflare / gov.mo | 1.1.1.1 / 9.9.9.9 | Cloudflare+Google → Macau local (CTM/MTel) → Quad9 → DHCP | 55 / 150 / 420 ms |
 | `tw` Taiwan | google / cloudflare / yahoo.com.tw / pchome | 1.1.1.1 / 168.95.1.1 | Cloudflare+Google → HiNet → Quad9 → DHCP | 50 / 140 / 400 ms |
 | `jp` Japan | google / cloudflare / yahoo.co.jp / rakuten | 1.1.1.1 / 202.12.27.33 | JP local → Cloudflare+Google → Quad9 → DHCP | 50 / 140 / 400 ms |
 | `kr` South Korea | google / cloudflare / naver / daum | 1.1.1.1 / 168.126.63.1 | KR local → Cloudflare+Google → Quad9 → DHCP | 50 / 140 / 400 ms |
@@ -257,12 +258,13 @@ Detection order, strongest signal first — all local, **no geo-IP database and 
 
 1. **Latency scoring** — TCP handshake RTT against a China anchor vs. global anycast anchors; a 60 ms gap is required before it is trusted. This can only answer "am I in mainland China": East Asian regions differ by a dozen milliseconds from each other, and anycast is local everywhere, so latency alone cannot pin down a country
 2. **Timezone** — reads `TimeZoneKeyName` (not `StandardName`, which returns un-matchable resource strings like `@tzres.dll,-572` on localized Windows); precise down to the country
-3. **System locale** — `zh-CN → cn`, `zh-TW → tw`, `zh-HK → hk`, `ja → jp`, `ko → kr`, `en-AU → au`, `en-GB → eu`, European languages → `eu`, everything else → `other`
+3. **System locale** — `zh-CN → cn`, `zh-HK → hk`, `zh-MO → mo`, `zh-TW → tw`, `ja → jp`, `ko → kr`, `en-AU → au`, `en-GB → eu`, European languages → `eu`, everything else → `other`
 
 You can pin the profile at **Settings → Region** and detection follows immediately. **The interfaces and grading logic are universal; only "where to aim" is regional** — and that lives in exactly one module, `core/region.py`.
 
-> Known limitation: Hong Kong and mainland China share the `China Standard Time` key, so
-> the timezone alone cannot tell them apart; locale and latency scoring fill the gap.
+> Known limitation: mainland China, Hong Kong and Macau all share the `China Standard Time`
+> key, so the timezone alone cannot tell them apart; the HK and Macau profiles rely entirely
+> on the system region code (`zh-HK` / `zh-MO`).
 
 ### Safety · three layers
 
@@ -392,7 +394,7 @@ Full history in **[CHANGELOG.md](CHANGELOG.md)**; binaries and per-release notes
 
 - [ ] **Code signing** — currently unsigned, so SmartScreen warns once on first launch; an OV/EV certificate is the plan
 - [ ] **Full elevated end-to-end validation** — the current suite covers pure logic and read-only paths; the full apply → rollback loop is still verified by manual dry runs and needs a real administrator environment
-- [x] **More region profiles** — done in v1.2.0: 3 coarse profiles split into 11
+- [x] **More region profiles** — done in v1.2.0: 3 coarse profiles split into 12
 
 ### Under consideration
 

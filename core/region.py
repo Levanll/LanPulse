@@ -31,6 +31,7 @@ from typing import Any, Callable
 REGION_AUTO = "auto"
 REGION_CN = "cn"
 REGION_HK = "hk"
+REGION_MO = "mo"
 REGION_TW = "tw"
 REGION_JP = "jp"
 REGION_KR = "kr"
@@ -42,8 +43,9 @@ REGION_EU = "eu"
 REGION_OTHER = "other"
 
 #: 顺序即设置页下拉顺序：按中文用户的使用概率排，中国大陆在最前。
+#: 港澳台连排，便于用户在同一视觉区块里找到。
 ALL_REGIONS = (
-    REGION_CN, REGION_HK, REGION_TW, REGION_JP, REGION_KR, REGION_SG,
+    REGION_CN, REGION_HK, REGION_MO, REGION_TW, REGION_JP, REGION_KR, REGION_SG,
     REGION_IN, REGION_AU, REGION_NA, REGION_EU, REGION_OTHER,
 )
 
@@ -111,6 +113,12 @@ DNS_VENDOR_KEYS: dict[str, str] = {
     # ---- 香港 ----
     "205.252.144.228": "dns.vendor.hk",
     "202.181.224.2": "dns.vendor.hk",
+    # ---- 澳门（CTM / MTel）----
+    # 地址取自 public-dns.info 的澳门列表，只保留标注 100% 可靠率的 CTM/MTel 服务器。
+    # 澳门只有 CTM 与 MTel 两家固网运营商，不存在像大陆那样的多家公共 DNS。
+    "202.175.82.192": "dns.vendor.mo",
+    "182.93.23.130": "dns.vendor.mo",
+    "205.198.55.225": "dns.vendor.mo",   # MTel
     # ---- 台湾 ----
     "168.95.1.1": "dns.vendor.tw",
     "168.95.192.1": "dns.vendor.tw",
@@ -257,6 +265,30 @@ PROFILES: dict[str, RegionProfile] = {
         rtt_excellent_ms=45,
         rtt_normal_ms=110,
         rtt_slow_ms=300,
+    ),
+    # 澳门：城市网络，规模比香港更小，本地 DNS 只有 CTM 与 MTel 两家。
+    # 到香港/珠海都在 10ms 级，到国际 anycast 节点通常经香港出口，
+    # 因此阈值在香港的基础上给一点点余量（澳门本地出口带宽更紧张）。
+    REGION_MO: RegionProfile(
+        key=REGION_MO,
+        name_key="region.mo",
+        resolve_domains=("www.google.com", "www.cloudflare.com",
+                         "www.macaupost.gov.mo", "www.gov.mo"),
+        ping_targets=(("1.1.1.1", "probe.cloudflare"), ("9.9.9.9", "probe.quad9")),
+        tcp_targets=(("www.google.com", 443), ("www.cloudflare.com", 443)),
+        mtu_target="1.1.1.1",
+        dns_plans=(
+            _plan("global_public", ("1.1.1.1", "8.8.8.8"), "accent"),
+            _plan("mo_local", ("202.175.82.192", "182.93.23.130"), "info"),
+            _plan("quad9", ("9.9.9.9", "149.112.112.112"), "info"),
+            _plan("dhcp", (), "dim"),
+        ),
+        resolve_excellent_ms=55,
+        resolve_normal_ms=150,
+        resolve_slow_ms=420,
+        rtt_excellent_ms=50,
+        rtt_normal_ms=120,
+        rtt_slow_ms=320,
     ),
     # 台湾：本地 DNS 干净且快，国际 anycast 通常也在 30ms 内。
     REGION_TW: RegionProfile(
@@ -472,8 +504,9 @@ _WIN_TZ_HINTS = {
     # ---- 大中华区 ----
     "China Standard Time": REGION_CN,
     "Taipei Standard Time": REGION_TW,
-    # 香港没有独立时区键，Windows 上与北京共用 China Standard Time。
-    # 无法仅凭时区区分，交由语言 / 延迟打分补充判断（见 detect_region）。
+    # 香港与澳门都没有独立的 Windows 时区键，三者共用 China Standard Time。
+    # 仅凭时区无法区分，交由语言与延迟打分补充判断（见 detect_region）：
+    # zh-HK / zh-MO 两个地区码能把港澳分开，其余中文按大陆处理。
     # ---- 日韩 ----
     "Tokyo Standard Time": REGION_JP,
     "Korea Standard Time": REGION_KR,
@@ -516,6 +549,8 @@ _TZ_HINTS = {
     "Asia/Shanghai": REGION_CN, "Asia/Chongqing": REGION_CN, "Asia/Harbin": REGION_CN,
     "Asia/Urumqi": REGION_CN, "PRC": REGION_CN,
     "Asia/Hong_Kong": REGION_HK, "Hongkong": REGION_HK,
+    # 澳门用 IANA 的 Asia/Macau（与 Asia/Macao 等价，两者都收录）
+    "Asia/Macau": REGION_MO, "Asia/Macao": REGION_MO, "Macao": REGION_MO,
     "Asia/Taipei": REGION_TW, "ROC": REGION_TW,
     # ---- 日韩 ----
     "Asia/Tokyo": REGION_JP, "Japan": REGION_JP,
@@ -593,11 +628,14 @@ def _locale_region() -> str:
     lang = lang.lower().replace("_", "-")
 
     if lang.startswith("zh"):
-        # zh-tw / zh-hk 指向台港澳，其余中文（zh-cn / zh-sg 等）按大陆处理
+        # zh-tw / zh-hk / zh-mo 分别指向台港澳，其余中文（zh-cn / zh-sg 等）按大陆处理。
+        # 这是港澳唯一的可靠区分手段：三地共用 Windows 的 China Standard Time。
         if "tw" in lang:
             return REGION_TW
-        if "hk" in lang or "mo" in lang:
+        if "hk" in lang:
             return REGION_HK
+        if "mo" in lang:
+            return REGION_MO
         return REGION_CN
     if lang.startswith("ja"):
         return REGION_JP
@@ -848,7 +886,7 @@ def detect_network_environment(
 
 
 __all__ = [
-    "REGION_AUTO", "REGION_CN", "REGION_HK", "REGION_TW", "REGION_JP",
+    "REGION_AUTO", "REGION_CN", "REGION_HK", "REGION_MO", "REGION_TW", "REGION_JP",
     "REGION_KR", "REGION_SG", "REGION_IN", "REGION_AU", "REGION_NA",
     "REGION_EU", "REGION_OTHER", "ALL_REGIONS", "LEGACY_REGION_ALIASES",
     "normalize_region", "DnsPlan", "RegionProfile", "PROFILES", "DNS_VENDOR_KEYS",

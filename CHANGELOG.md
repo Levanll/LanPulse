@@ -3,10 +3,32 @@
 本文件格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+**补充中国澳门区域剖面（第 12 套）**
+
+v1.2.0 发布时遗漏了澳门，归入香港剖面。澳门只有 CTM 与 MTel 两家固网运营商，
+本地 DNS、出口路径与香港均不同，合并会让澳门用户拿到不适用的探测目标。
+
+- 新增 `mo` 剖面：解析域名 `gov.mo` / `macaupost.gov.mo`，本地 DNS 取 CTM 与
+  MTel 服务器（地址经 public-dns.info 澳门列表核实，只保留标注 100% 可靠率的条目）
+- `DNS_VENDOR_KEYS` 补 3 个澳门地址
+- 时区映射补 `Asia/Macau` / `Asia/Macao` / `Macao`
+- 语言映射把 `zh-MO` 从"并入香港"改为独立指向澳门
+- `tests/test_region.py` 增加澳门专项用例（剖面完整性、地址段校验、归属识别、
+  时区别名、以及"澳门不得被并入香港"的回归用例）
+
+### 变更
+
+- 区域数量断言不再写死具体数字（避免每加一个区域就要改测试），
+  改为校验 `ALL_REGIONS` 与 `PROFILES` 完全对应
+
 ## [1.2.0] - 2026-11-08
 
 区域剖面从 3 套粗粒度拆成 11 套；补齐 4 个修复动作的闭环实测，
-过程中发现并修复 2 个真实缺陷。
+过程中发现并修复 3 个真实缺陷。
 
 ### 新增
 
@@ -73,8 +95,8 @@
 
 - 仍有 4 个动作未做真实闭环：`tcp.reset_stack`、`adapter.reset_stack`、
   `mtu.optimize`、`adapter.renew_dhcp`，以及刚修好导入缺陷的 `netbios.disable_public`
-- 区域自动识别仍是启发式的：香港与大陆共用 `China Standard Time` 时区键，
-  无法仅凭时区区分，需靠语言与延迟打分补充判断
+- 区域自动识别仍是启发式的：大陆、香港、澳门共用 `China Standard Time` 时区键，
+  港澳完全依赖系统地区码（`zh-HK` / `zh-MO`）判定
 
 ## [1.1.0] - 2026-11-08
 
