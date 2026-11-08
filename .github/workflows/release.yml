@@ -45,13 +45,22 @@ jobs:
         shell: pwsh
         run: |
           # 版本号唯一来源是 installer/LanPulse.iss 的 MyAppVersion，
-          # 避免 tag 与脚本里的版本号漂移
-          $iss = Get-Content installer/LanPulse.iss -Raw
-          if ($iss -match '#define\s+MyAppVersion\s+"([^"]+)"') {
-            $v = $Matches[1]
-          } else {
-            throw "无法从 installer/LanPulse.iss 解析 MyAppVersion"
+          # 避免 tag 与脚本里的版本号漂移。
+          #
+          # 必须逐行跳过以 ';' 开头的注释行：iss 文件头部有一条用法示例
+          #     ;      #define MyAppVersion "1.0.0"
+          # 直接用 -match 对整个文件做正则，匹配到的是注释里那个 1.0.0，
+          # 于是 Release 标题和绿色包名都成了 1.0.0（v1.2.0 发布时实际发生）。
+          # 这里与 tools/check_consistency.py 的解析方式保持一致。
+          $v = $null
+          foreach ($line in Get-Content installer/LanPulse.iss) {
+            if ($line.TrimStart().StartsWith(";")) { continue }
+            if ($line -match '^\s*#define\s+MyAppVersion\s+"([^"]+)"') {
+              $v = $Matches[1]
+              break
+            }
           }
+          if (-not $v) { throw "无法从 installer/LanPulse.iss 解析 MyAppVersion" }
           "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "版本号: $v"
 
