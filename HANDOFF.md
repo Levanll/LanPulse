@@ -1,9 +1,10 @@
 # 交接文档（HANDOFF）
 
 > 面向：接手继续开发的新会话
-> 更新时间：2026-11-08
+> 更新时间：2026-11-10
 > 当前版本：LanPulse v1.2.1（已发布）
 > 仓库：https://github.com/Levanll/LanPulse
+> 工作目录：`D:\Documents\deepseek-harness\default-workspace\lanpulse`
 
 ---
 
@@ -186,18 +187,43 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 - 最新 Release：`v1.2.1`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
 - 数据目录：`%LOCALAPPDATA%\LanPulse`
 - Packages：**有意保持为空**（本项目为 Windows exe，GitHub Packages 的 registry 均不匹配）
+- 落地页：https://levanll.github.io/LanPulse/ （源在 `site/`，双语互链）
 
-### ⚠ 有一处未推送的提交
+### ✅ 本地与远端已完全同步
+
+```powershell
+git fetch origin
+git rev-list --count origin/main..HEAD   # 必须为 0
+git ls-remote origin refs/heads/main     # 与本地 HEAD 一致
+```
+
+**以 `git ls-remote` 为准**，不要只看 `git rev-list`：本地 `origin/main` 跟踪引用可能过时，
+造成"有待推送提交"的假象（曾因此误判过 3 个提交）。
+
+### Release 说明：中英对照，源稿在仓库里
+
+三个 Release 的 body 都是「先中文 → `---` 分隔 → 再英文」，与仓库 About 的格式一致。
+
+**源稿在 `docs/release-notes/`**，每个版本三份：
 
 ```
-a9b38b9 fix(tools): repo About must be a single line
+docs/release-notes/
+├── v1.2.1.md           中文
+├── v1.2.1.en.md        英文
+└── v1.2.1.merged.md    合并稿（实际推送到 GitHub 的内容）
 ```
 
-它在 v1.2.1 发布**之后**产生，只改 `tools/repo_about.py`，**不影响任何已发布产物**。
-下次带 token 推送时一并推上即可。
+改发布说明**不要**去网页上直接编辑，改源稿再重推：
 
-注意：`git log origin/main..main` 可能显示 3 个提交，那是本地 `origin/main`
-跟踪引用过时造成的假象。**以 `git ls-remote origin refs/heads/main` 为准**。
+```powershell
+# 改完 .md / .en.md 后
+.\.venv\Scripts\python.exe tools\update_release_bodies.py merge   # 生成合并稿
+.\.venv\Scripts\python.exe tools\update_release_bodies.py         # 推送到 GitHub
+```
+
+推完脚本会自动核对三个版本是否都含「中文 + 分隔符 + 英文」，并打印资产数量防止误改。
+
+**只改 body，不动 tag / 资产 / 版本号**——发布说明的更新不需要发新版。
 
 ### 已知限制（诚实记录，不要当作已解决）
 
@@ -404,6 +430,25 @@ git config --local branch.main.merge refs/heads/main
 推送时用 `https://x-access-token:<token>@github.com/...` 作为一次性 URL 参数，
 push 完立刻 `remote set-url` 复原。
 
+### Release 说明改双语时，中文稿的结构不统一
+
+v1.1.0 的中文稿直接从「首个公开版本。」开头，缺 `## 本次更新` 标题——因为它是
+从旧 CHANGELOG 抽出来的，而 v1.2.0 / v1.2.1 是后写的、有标题。
+
+合并中英时如果不统一标题层级，渲染出来中文段没有小标题、英文段有，看起来像漏了内容。
+
+**`update_release_bodies.py merge` 不做结构校验**（它只负责拼接），改稿时自己保证
+两版的 `#` 标题数量一致。核对方法：
+
+```powershell
+.\.venv\Scripts\python.exe -c "import pathlib; [print(t, sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#')), sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.en.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#'))) for t in ('v1.1.0','v1.2.0','v1.2.1')]"
+```
+
+### Release body 里的「1.0.0」不一定是描述错误
+
+v1.2.0 的正文含 `1.0.0`，那是它自己的一条修复记录（「发布流程把版本号解析成了 1.0.0」），
+不是旧版本内容。搜索旧版本痕迹时会误报，需看上下文再判断。
+
 ---
 
 ## 八、开发约定
@@ -461,6 +506,17 @@ push 完立刻 `remote set-url` 复原。
 
 预览：直接浏览器打开 `site/index.html` 即可，无需构建步骤。
 
+### 修改发布说明（Release body）
+
+1. 改 `docs/release-notes/<tag>.md`（中文）与 `<tag>.en.md`（英文）
+2. **两版的 `#` 标题层级数量必须一致**，否则渲染后中英结构不齐
+3. 跑 `tools/update_release_bodies.py merge` 生成合并稿
+4. 跑 `tools/update_release_bodies.py` 推送
+
+不改 tag、不动资产、不升版本号。
+
+不要把 `**完整说明见 [CHANGELOG.md](...)**` 这类链接行删掉——它是通往完整变更记录的入口。
+
 ### 提交前必跑
 
 ```powershell
@@ -505,11 +561,19 @@ push 完立刻 `remote set-url` 复原。
 - 闭环实测记录：[docs/闭环实测报告.md](docs/闭环实测报告.md)
 - 与同类项目对比：[docs/对比分析与借鉴决策.md](docs/对比分析与借鉴决策.md)
 - 变更历史：[CHANGELOG.md](CHANGELOG.md)
+- 各版本发布说明源稿：[docs/release-notes/](docs/release-notes/)
 
 **发布相关脚本**：
 
 - `tools/check_consistency.py` —— 18 项交叉校验，改文档/版本后必跑
 - `tools/repo_about.py` + `tools/apply_repo_about.py` —— 生成并应用双语 About 与 topics
+- `tools/update_release_bodies.py` —— 发布说明中英合并与推送（`merge` 子命令只生成不推送）
 - `tools/publish_github.py` / `tools/final_publish.py` —— 版本号均从 branding 读（切勿改回硬编码）
+
+**账号与凭据**：
+
+- 组织/账号：`Levanll`
+- 发布 token 走 `.gh_token`，**用完即删**；每次约定的清理清单见第七节末
+- 撤销入口：https://github.com/settings/tokens
 
 参考项目（借鉴设计思路，未复制代码）：https://github.com/silentcrow09/netpulse
