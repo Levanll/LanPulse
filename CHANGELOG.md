@@ -3,6 +3,43 @@
 本文件格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+**项目落地页（GitHub Pages）**
+
+`site/` 是站点发布源，中英双语两套页面：产品定位、三条硬约束、14 项检测、
+截图、12 套区域剖面、安装步骤、常见问题。设计上刻意不引入任何外部资源
+（字体、CDN、图标库），页面可离线打开、不向第三方泄露访问者 IP——与产品
+「零上传」的立场一致。
+
+下载链接指向 `/releases/latest/download/`，随 Release 自动更新。
+
+配套两个工具：
+
+- `tools/sync_site_assets.py` —— 把 `docs/images/` 里用到的截图同步到
+  `site/assets/`。站点必须自包含（Pages 的站点根就是 `site/`），
+  但又不能手动复制导致两处不一致
+- `tools/check_site.py` —— 部署前自检：资源可解析、版本号一致、双语互链、
+  不引用站点外路径
+
+### 变更
+
+- `check_consistency.py` 新增第 [8] 节：站点版本号与 `branding.VERSION` 一致、
+  站点截图与 `docs/images` 逐字节一致。共 20 项检查
+- `.github/workflows/pages.yml` —— 推送 `site/**` 或 `docs/images/**` 时自动部署
+
+### 清理
+
+删除三个已完成使命的一次性脚本（已归档，不再入库）：
+
+- `tools/add_v110_keys.py` —— v1.1.0 的 i18n 批量插入脚本，硬编码了当时的文案
+- `tools/fix_ui_i18n.py` —— v1.1.0 的 UI 骨架文案收尾脚本
+- `tools/prepare_github.py` —— 已被 `publish_github.py` 取代
+
+`tools/` 从 25 个文件降到 22 个。
+
 ## [1.2.1] - 2026-11-08
 
 ### 新增

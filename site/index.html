@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LanPulse 澜脉冲 —— Windows 网络体检与一键修复</title>
+<meta name="description" content="LanPulse（澜脉冲）是一款面向普通用户的 Windows 网络诊断与一键修复工具：14 项检测、6 个场景、10 条根因规则、15 个可回滚修复动作、12 套区域剖面。全本地运行，不上传任何数据。">
+<meta property="og:title" content="LanPulse 澜脉冲 —— Windows 网络体检与一键修复">
+<meta property="og:description" content="先备份、后修改、可回滚。全本地运行，零上传。">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="./">
+      <span class="brand-mark"></span>
+      <span class="brand-text">LanPulse<span class="brand-zh">澜脉冲</span></span>
+    </a>
+    <nav class="site-nav">
+      <a href="#features">特性</a>
+      <a href="#screens">界面</a>
+      <a href="#regions">区域</a>
+      <a href="#install">安装</a>
+      <a href="en/" class="lang-switch">English</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="wrap">
+      <img class="hero-img" src="assets/hero-banner-zh.png"
+           alt="LanPulse 澜脉冲 界面预览" width="1200" height="400">
+      <h1>网络出问题时，<br>先弄清楚是哪里出了问题</h1>
+      <p class="lead">
+        不是又一个「一键修复」黑盒。LanPulse 先把 14 项检测做全，
+        用 10 条根因规则给出<b>带证据链</b>的结论，
+        再让你决定要不要修——<b>每一次修改都先备份、都能回滚</b>。
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/Levanll/LanPulse/releases/latest/download/LanPulse-1.2.1-Setup.exe">
+          下载安装包<span class="btn-sub">Windows 10 / 11 · 64 位</span>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/Levanll/LanPulse/releases/latest/download/LanPulse-1.2.1-win64-portable.zip">
+          绿色版<span class="btn-sub">解压即用，不写注册表</span>
+        </a>
+      </div>
+      <p class="hero-note">
+        当前版本 <b>v1.2.1</b> · 开源 MIT ·
+        <a href="https://github.com/Levanll/LanPulse">查看源码</a>
+      </p>
+    </div>
+  </section>
+
+  <section id="features" class="section">
+    <div class="wrap">
+      <h2>三条硬约束，写在代码里</h2>
+      <p class="section-sub">不是宣传语，是实现方式本身</p>
+
+      <div class="cards">
+        <article class="card">
+          <h3>先备份、后修改</h3>
+          <p>
+            所有写操作前必须先完成备份，<b>备份失败则整轮中止、一条都不改</b>。
+            不会出现「改了一半没有退路」的现场。
+          </p>
+        </article>
+        <article class="card">
+          <h3>可以回滚</h3>
+          <p>
+            备份是纯文本与 <code>.reg</code> 文件，<b>软件本身坏了也能手工还原</b>。
+            回滚不依赖程序运行时状态。
+          </p>
+        </article>
+        <article class="card">
+          <h3>零上传</h3>
+          <p>
+            无遥测、无账号、无云端。所有探测只在本机发起，
+            <b>不收集也不上传任何网络数据</b>。
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="wrap">
+      <h2>14 项检测，从链路层到应用层</h2>
+      <p class="section-sub">每一项都可单独运行、单独显示，不是一个大而化之的「网络正常」</p>
+
+      <div class="grid-2">
+        <ul class="check-list">
+          <li>网卡与链路状态</li>
+          <li>IP 地址配置</li>
+          <li>默认网关与路由</li>
+          <li>DNS 服务器配置</li>
+          <li>域名解析与响应速度</li>
+          <li>HOSTS 文件</li>
+          <li>系统代理设置</li>
+        </ul>
+        <ul class="check-list">
+          <li>TCP/IP 协议栈参数</li>
+          <li>MTU 与分片</li>
+          <li>Windows 防火墙</li>
+          <li>外网连通性与延迟</li>
+          <li>网页打开速度（DNS/TCP/TLS/首字节）</li>
+          <li>DNS 是否被篡改</li>
+          <li>下载时延迟（缓冲膨胀）</li>
+        </ul>
+      </div>
+
+      <div class="note-box">
+        <h3>测不准就报「跳过」，不给虚假结论</h3>
+        <p>
+          判断标准是：<b>这个结论如果错了，用户会不会做出错误决策？</b>
+          会，就宁可报 SKIP 并说明原因，而不是给一个看起来很确定的假结论。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens" class="section">
+    <div class="wrap">
+      <h2>界面</h2>
+      <p class="section-sub">截图使用合成数据（EXAMPLE-PC / 192.0.2.42），不含任何本机信息</p>
+
+      <div class="shots">
+        <figure>
+          <img src="assets/screenshot-dashboard.png" alt="总览页：健康分与当前网络状态" loading="lazy">
+          <figcaption>总览 · 健康分与当前网络状态</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshot-scenario.png" alt="场景页：按症状选择" loading="lazy">
+          <figcaption>场景 · 不用懂技术名词，按症状选</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshot-diagnose.png" alt="诊断详情：带证据链的结论" loading="lazy">
+          <figcaption>诊断 · 每条结论都带证据链</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshot-repair.png" alt="一键修复页" loading="lazy">
+          <figcaption>修复 · 先预览改什么，再决定执行</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshot-backup.png" alt="备份与回滚页" loading="lazy">
+          <figcaption>备份 · 每次修改的原状都在这里</figcaption>
+        </figure>
+        <figure>
+          <img src="assets/screenshot-settings-zh.png" alt="设置页" loading="lazy">
+          <figcaption>设置 · 语言、区域与探测策略</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="regions" class="section section-alt">
+    <div class="wrap">
+      <h2>12 套区域剖面</h2>
+      <p class="section-sub">
+        网络工具最容易犯的错，是「用本地的尺子量全世界的网络」。
+        在法兰克福拿 <code>223.5.5.5</code> 当基准，只会把正常网络判成故障。
+      </p>
+
+      <div class="region-table">
+        <table>
+          <thead>
+            <tr><th>区域</th><th>本地 DNS 方案</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>中国大陆</td><td>阿里 + 腾讯</td></tr>
+            <tr><td>中国香港</td><td>香港本地</td></tr>
+            <tr><td>中国澳门</td><td>澳门本地（CTM / MTel）</td></tr>
+            <tr><td>中国台湾</td><td>中华电信 HiNet</td></tr>
+            <tr><td>日本</td><td>日本本地</td></tr>
+            <tr><td>韩国</td><td>韩国本地</td></tr>
+            <tr><td>新加坡 / 东南亚</td><td>新加坡本地</td></tr>
+            <tr><td>印度 / 南亚</td><td>印度本地</td></tr>
+            <tr><td>澳大利亚 / 新西兰</td><td>澳洲本地</td></tr>
+            <tr><td>北美</td><td>北美本地</td></tr>
+            <tr><td>欧洲</td><td>欧盟公共 DNS（GDPR）</td></tr>
+            <tr><td>其他地区</td><td>全球 anycast（阈值最宽松，不误报）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="tiny">
+        识别只用本地信号：实测延迟 → 系统时区 → 系统语言。
+        不请求任何地理 IP 数据库或定位 API。
+      </p>
+    </div>
+  </section>
+
+  <section id="install" class="section">
+    <div class="wrap">
+      <h2>安装</h2>
+
+      <div class="grid-2">
+        <div class="install-col">
+          <h3>安装包（推荐）</h3>
+          <ol class="steps">
+            <li>下载 <code>LanPulse-1.2.1-Setup.exe</code></li>
+            <li>双击运行，按向导完成安装</li>
+            <li>从开始菜单启动</li>
+          </ol>
+          <a class="btn btn-primary btn-sm" href="https://github.com/Levanll/LanPulse/releases/latest/download/LanPulse-1.2.1-Setup.exe">下载安装包</a>
+        </div>
+        <div class="install-col">
+          <h3>绿色版</h3>
+          <ol class="steps">
+            <li>下载 <code>LanPulse-1.2.1-win64-portable.zip</code></li>
+            <li>解压到任意目录</li>
+            <li>运行 <code>LanPulse.exe</code></li>
+          </ol>
+          <a class="btn btn-ghost btn-sm" href="https://github.com/Levanll/LanPulse/releases/latest/download/LanPulse-1.2.1-win64-portable.zip">下载绿色版</a>
+        </div>
+      </div>
+
+      <div class="note-box warn">
+        <h3>首次运行会看到 SmartScreen 提示</h3>
+        <p>
+          本项目未购买代码签名证书，Windows 会提示「未知发布者」。
+          点「更多信息」→「仍要运行」即可。
+          可对照 Release 页面的 <code>SHA256SUMS.txt</code> 校验文件完整性。
+        </p>
+      </div>
+
+      <h3 class="sysreq-h">系统要求</h3>
+      <ul class="sysreq">
+        <li>Windows 10 / 11，64 位</li>
+        <li>无需管理员权限即可体检；<b>执行修复动作时才需要提权</b></li>
+        <li>约 80 MB 磁盘空间</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="wrap">
+      <h2>常见问题</h2>
+      <dl class="faq">
+        <dt>会收集我的数据吗？</dt>
+        <dd>不会。无遥测、无账号、无云端，所有探测只在本机发起并只在本机使用。</dd>
+
+        <dt>修复动作安全吗？</dt>
+        <dd>
+          每个动作执行前都会先备份原状，执行后读回校验；不满意可以一键回滚。
+          少数动作（重置协议栈）需要重启才能生效，且<b>回滚只在重启前有效</b>——
+          这类动作在界面里会明确标出，且默认不勾选。
+        </dd>
+
+        <dt>需要懂网络吗？</dt>
+        <dd>
+          不需要。可以直接按症状选场景（上网很慢 / 经常断网 / 网页打不开 …），
+          也可以看完整报告，每条结论都附证据。
+        </dd>
+
+        <dt>支持 macOS / Linux 吗？</dt>
+        <dd>不支持。大量检测依赖 Windows 的 netsh、注册表与 WinINET API。</dd>
+      </dl>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-cols">
+      <div>
+        <h4>LanPulse 澜脉冲</h4>
+        <p class="tiny">Windows 网络体检与一键修复</p>
+      </div>
+      <div>
+        <h4>项目</h4>
+        <ul>
+          <li><a href="https://github.com/Levanll/LanPulse">GitHub 仓库</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/releases">全部版本</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/CHANGELOG.md">更新日志</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>文档</h4>
+        <ul>
+          <li><a href="https://github.com/Levanll/LanPulse#readme">使用说明</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/docs/设计方案.md">设计方案</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/docs/闭环实测报告.md">闭环实测报告</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>其他</h4>
+        <ul>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/LICENSE">MIT 许可证</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/SECURITY.md">安全说明</a></li>
+          <li><a href="en/" class="lang-switch">English</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer-note">
+      LanPulse v1.2.1 · 截图使用合成数据，不含任何本机信息。
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

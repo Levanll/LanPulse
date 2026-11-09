@@ -41,6 +41,10 @@ $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe tools\audit_i18n.py
 .\.venv\Scripts\python.exe tools\privacy_audit.py
 
+# 站点自检（改了 site/ 或发版后必跑）
+.\.venv\Scripts\python.exe tools\sync_site_assets.py   # 先同步截图
+.\.venv\Scripts\python.exe tools\check_site.py
+
 # 完整构建（PyInstaller + Inno Setup，产出 release\）
 powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 ```
@@ -85,6 +89,7 @@ lanpulse/
 ├── tests/                     140 项
 ├── tools/                     开发与运维脚本（见第八节）
 ├── installer/                 Inno Setup 脚本与资源
+├── site/                      落地页（GitHub Pages 的发布源，自包含）
 └── docs/                      设计、使用、实测、对比分析
 ```
 
@@ -223,6 +228,7 @@ a9b38b9 fix(tools): repo About must be a single line
 |---|---|---|
 | 单元 | `pytest tests -q` | 140 项，约 1.3 秒 |
 | 一致性 | `tools/check_consistency.py` | 18 项：检测项数/版本/品牌/标题/截图/i18n/链接 |
+| 站点 | `tools/check_site.py` | 资源可达 / 版本一致 / 双语互链 / 无越界引用 |
 | 端到端 | 构建 → 安装 → 启动 → 卸载 | 手动，见下 |
 
 ### 端到端检查清单
@@ -442,6 +448,18 @@ push 完立刻 `remote set-url` 复原。
 两语言必须同时加，且占位符集合一致。`audit_i18n.py` 会检查。
 
 **缺失 key 时 `t()` 返回 `⟦key⟧`** —— 这是刻意的可见失败，不要改成静默回退。
+
+### 修改落地页
+
+站点在 `site/`，是 GitHub Pages 的**发布源**，因此必须自包含：
+
+- 图片不能引用 `../docs/images/`（站点根就是 `site/`，上级目录不存在）
+- 截图改动后跑 `tools/sync_site_assets.py` 同步到 `site/assets/`
+- **发版后必须同步改页面里的版本号**：下载链接用
+  `/releases/latest/download/LanPulse-<版本>-Setup.exe`，文件名带版本号，
+  忘了改就会 404。`check_consistency.py` 第 [8] 节和 `check_site.py` 都会拦
+
+预览：直接浏览器打开 `site/index.html` 即可，无需构建步骤。
 
 ### 提交前必跑
 

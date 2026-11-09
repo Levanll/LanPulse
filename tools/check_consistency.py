@@ -305,6 +305,40 @@ def main() -> int:
                                not missing_files,
                                ", ".join(missing_files[:3])) else 1
 
+    # ---- 8. 站点与文档同步 ----
+    # 落地页的下载链接把版本号写在文件名里（/releases/latest/download/
+    # 需要固定文件名），所以每次发版都必须同步改页面，否则用户点下载会 404。
+    # 这里只做"是否一致"的粗检；页面级细节交给 tools/check_site.py。
+    print("\n[8] 站点")
+    site = ROOT / "site"
+    if site.is_dir():
+        html_files = sorted(site.rglob("*.html"))
+        stale = []
+        for page in html_files:
+            text = page.read_text(encoding="utf-8")
+            for ver in set(re.findall(r"LanPulse-(\d+\.\d+\.\d+)-", text)):
+                if ver != VERSION:
+                    stale.append(f"{page.relative_to(ROOT)}({ver})")
+        failures += 0 if check(
+            f"站点 {len(html_files)} 个页面的下载链接版本 == {VERSION}",
+            not stale, ", ".join(sorted(set(stale))[:3])) else 1
+
+        # 截图是 docs/images 的副本；不同步会让线上图与 README 不一致
+        import hashlib
+
+        out_of_sync = []
+        assets = site / "assets"
+        for img in sorted((ROOT / "docs" / "images").glob("*.png")):
+            copy = assets / img.name
+            if not copy.is_file():
+                continue                      # 没被站点引用的图不算
+            if hashlib.sha256(copy.read_bytes()).hexdigest() != \
+                    hashlib.sha256(img.read_bytes()).hexdigest():
+                out_of_sync.append(img.name)
+        failures += 0 if check("站点截图与 docs/images 一致",
+                               not out_of_sync,
+                               "先跑 tools/sync_site_assets.py：" + ", ".join(out_of_sync[:3])) else 1
+
     print("\n" + "=" * 66)
     if failures == 0:
         print("全部通过。")

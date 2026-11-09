@@ -1,0 +1,67 @@
+name: Pages
+
+# 只在站点内容变化时部署，避免每次推代码都重建。
+# 注意 paths 必须覆盖"会影响页面"的所有来源：站点源文件，以及它引用的截图
+# （截图重新生成后即使 site/ 未改，也需要重新同步并部署）。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "docs/images/**"
+      - "tools/sync_site_assets.py"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write        # actions/deploy-pages 需要 OIDC
+
+# 同一时间只跑一个部署；不取消进行中的，避免站点处于半发布状态
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 构建站点
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 同步截图资源
+        # 站点资产是 docs/images 的副本（理由见 tools/sync_site_assets.py 顶部）。
+        # 在 CI 里再同步一次，保证"截图更新了但忘了跑同步脚本"也能正确发布。
+        run: python tools/sync_site_assets.py
+
+      - name: 校验站点完整性
+        # 部署前挡住三类常见问题：页面引用了不存在的资源、
+        # 页面里的版本号与 branding 不一致、站点缺少必需文件。
+        run: python tools/check_site.py
+
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+
+      - name: 打包站点
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: 部署到 Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署
+        id: deployment
+        uses: actions/deploy-pages@v4

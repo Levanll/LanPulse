@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LanPulse — Windows network checkup &amp; one-click repair</title>
+<meta name="description" content="LanPulse is a Windows network diagnostics and repair tool for ordinary users: 14 checks, 6 scenarios, 10 root-cause rules, 15 rollback-safe repair actions, 12 region profiles. Runs entirely on your machine, uploads nothing.">
+<meta property="og:title" content="LanPulse — Windows network checkup &amp; one-click repair">
+<meta property="og:description" content="Back up first, modify second, always reversible. Runs entirely on your machine.">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="../">
+      <span class="brand-mark"></span>
+      <span class="brand-text">LanPulse</span>
+    </a>
+    <nav class="site-nav">
+      <a href="#features">Features</a>
+      <a href="#screens">Screens</a>
+      <a href="#regions">Regions</a>
+      <a href="#install">Install</a>
+      <a href="../" class="lang-switch">中文</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <section class="hero">
+    <div class="wrap">
+      <img class="hero-img" src="../assets/hero-banner-en.png"
+           alt="LanPulse interface preview" width="1200" height="400">
+      <h1>When the network breaks,<br>first find out <em>where</em> it broke</h1>
+      <p class="lead">
+        Not another "one-click fix" black box. LanPulse runs all 14 checks first,
+        turns them into a verdict backed by an evidence chain, and only then lets
+        you decide whether to repair — <b>every change is backed up first and can
+        be rolled back</b>.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://github.com/Levanll/LanPulse/releases/latest/download/LanPulse-1.2.1-Setup.exe">
+          Download installer<span class="btn-sub">Windows 10 / 11 · 64-bit</span>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/Levanll/LanPulse/releases/latest/download/LanPulse-1.2.1-win64-portable.zip">
+          Portable build<span class="btn-sub">Unzip and run, no registry writes</span>
+        </a>
+      </div>
+      <p class="hero-note">
+        Current version <b>v1.2.1</b> · MIT licensed ·
+        <a href="https://github.com/Levanll/LanPulse">View source</a>
+      </p>
+    </div>
+  </section>
+
+  <section id="features" class="section">
+    <div class="wrap">
+      <h2>Three hard constraints, enforced in code</h2>
+      <p class="section-sub">Not marketing copy — this is how it is implemented</p>
+
+      <div class="cards">
+        <article class="card">
+          <h3>Back up first</h3>
+          <p>
+            Every write is preceded by a mandatory backup. <b>If any backup fails,
+            the whole round is aborted and nothing is changed</b> — you never end up
+            half-modified with no way back.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Always reversible</h3>
+          <p>
+            Backups are plain text and <code>.reg</code> files, so
+            <b>you can restore by hand even if the app itself breaks</b>.
+            Rollback does not depend on the program still running.
+          </p>
+        </article>
+        <article class="card">
+          <h3>Nothing uploads</h3>
+          <p>
+            No telemetry, no accounts, no cloud. All probes originate locally and
+            stay local. <b>No network data is collected or transmitted.</b>
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="wrap">
+      <h2>14 checks, from link layer to application layer</h2>
+      <p class="section-sub">Each one runs and reports independently — not a vague "network is fine"</p>
+
+      <div class="grid-2">
+        <ul class="check-list">
+          <li>Adapter and link status</li>
+          <li>IP configuration</li>
+          <li>Default gateway and routes</li>
+          <li>DNS server configuration</li>
+          <li>Name resolution and latency</li>
+          <li>HOSTS file</li>
+          <li>System proxy settings</li>
+        </ul>
+        <ul class="check-list">
+          <li>TCP/IP stack parameters</li>
+          <li>MTU and fragmentation</li>
+          <li>Windows Firewall</li>
+          <li>Internet reachability and latency</li>
+          <li>Page load timing (DNS/TCP/TLS/TTFB)</li>
+          <li>DNS tampering detection</li>
+          <li>Latency under load (bufferbloat)</li>
+        </ul>
+      </div>
+
+      <div class="note-box">
+        <h3>If it cannot be measured, it reports SKIP</h3>
+        <p>
+          The test is: <b>if this verdict were wrong, would the user make a bad
+          decision?</b> If yes, report SKIP and explain, rather than emit a
+          confident-sounding false answer.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section id="screens" class="section">
+    <div class="wrap">
+      <h2>Screens</h2>
+      <p class="section-sub">Screenshots use synthetic data (EXAMPLE-PC / 192.0.2.42) and contain nothing from any real machine</p>
+
+      <div class="shots">
+        <figure>
+          <img src="../assets/screenshot-dashboard-en.png" alt="Overview: health score and current network state" loading="lazy">
+          <figcaption>Overview · health score and current state</figcaption>
+        </figure>
+        <figure>
+          <img src="../assets/screenshot-scenario-en.png" alt="Scenarios: choose by symptom" loading="lazy">
+          <figcaption>Scenarios · pick by symptom, no jargon needed</figcaption>
+        </figure>
+        <figure>
+          <img src="../assets/screenshot-diagnose-en.png" alt="Diagnostics: verdicts with evidence" loading="lazy">
+          <figcaption>Diagnostics · every verdict carries its evidence</figcaption>
+        </figure>
+        <figure>
+          <img src="../assets/screenshot-repair-en.png" alt="Repair page" loading="lazy">
+          <figcaption>Repair · preview what changes, then decide</figcaption>
+        </figure>
+        <figure>
+          <img src="../assets/screenshot-backup-en.png" alt="Backups and rollback" loading="lazy">
+          <figcaption>Backups · the prior state of every change</figcaption>
+        </figure>
+        <figure>
+          <img src="../assets/screenshot-settings-en.png" alt="Settings page" loading="lazy">
+          <figcaption>Settings · language, region and probe policy</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="regions" class="section section-alt">
+    <div class="wrap">
+      <h2>Twelve region profiles</h2>
+      <p class="section-sub">
+        The classic failure mode of network tools is measuring the whole world with
+        a local ruler. Using <code>223.5.5.5</code> as a baseline in Frankfurt will
+        report a perfectly healthy connection as broken.
+      </p>
+
+      <div class="region-table">
+        <table>
+          <thead>
+            <tr><th>Region</th><th>Local DNS preset</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Mainland China</td><td>Alibaba + Tencent</td></tr>
+            <tr><td>Hong Kong</td><td>Hong Kong local</td></tr>
+            <tr><td>Macau</td><td>Macau local (CTM / MTel)</td></tr>
+            <tr><td>Taiwan</td><td>HiNet</td></tr>
+            <tr><td>Japan</td><td>Japan local</td></tr>
+            <tr><td>South Korea</td><td>Korea local</td></tr>
+            <tr><td>Singapore / Southeast Asia</td><td>Singapore local</td></tr>
+            <tr><td>India / South Asia</td><td>India local</td></tr>
+            <tr><td>Australia / New Zealand</td><td>Australia local</td></tr>
+            <tr><td>North America</td><td>North America local</td></tr>
+            <tr><td>Europe</td><td>EU public DNS (GDPR)</td></tr>
+            <tr><td>Other regions</td><td>Global anycast (loosest thresholds, never false-alarms)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="tiny">
+        Detection uses local signals only: measured latency → system time zone →
+        system locale. No geo-IP database and no location API.
+      </p>
+    </div>
+  </section>
+
+  <section id="install" class="section">
+    <div class="wrap">
+      <h2>Install</h2>
+
+      <div class="grid-2">
+        <div class="install-col">
+          <h3>Installer (recommended)</h3>
+          <ol class="steps">
+            <li>Download <code>LanPulse-1.2.1-Setup.exe</code></li>
+            <li>Run it and follow the wizard</li>
+            <li>Launch from the Start menu</li>
+          </ol>
+          <a class="btn btn-primary btn-sm" href="https://github.com/Levanll/LanPulse/releases/latest/download/LanPulse-1.2.1-Setup.exe">Download installer</a>
+        </div>
+        <div class="install-col">
+          <h3>Portable build</h3>
+          <ol class="steps">
+            <li>Download <code>LanPulse-1.2.1-win64-portable.zip</code></li>
+            <li>Unzip anywhere</li>
+            <li>Run <code>LanPulse.exe</code></li>
+          </ol>
+          <a class="btn btn-ghost btn-sm" href="https://github.com/Levanll/LanPulse/releases/latest/download/LanPulse-1.2.1-win64-portable.zip">Download portable</a>
+        </div>
+      </div>
+
+      <div class="note-box warn">
+        <h3>SmartScreen will warn you on first run</h3>
+        <p>
+          This project does not carry a code-signing certificate, so Windows shows
+          "Unknown publisher". Choose "More info" → "Run anyway".
+          You can verify the file against <code>SHA256SUMS.txt</code> on the Release page.
+        </p>
+      </div>
+
+      <h3 class="sysreq-h">Requirements</h3>
+      <ul class="sysreq">
+        <li>Windows 10 / 11, 64-bit</li>
+        <li>No administrator rights needed for the checkup; <b>elevation is requested only for repair actions</b></li>
+        <li>About 80 MB of disk space</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="section section-alt">
+    <div class="wrap">
+      <h2>FAQ</h2>
+      <dl class="faq">
+        <dt>Does it collect my data?</dt>
+        <dd>No. No telemetry, no accounts, no cloud. Every probe originates locally and is used locally.</dd>
+
+        <dt>Are the repairs safe?</dt>
+        <dd>
+          Each action backs up the prior state, reads it back to verify, and can be
+          rolled back. A few actions (stack resets) need a restart to take effect, and
+          <b>their rollback is only valid before restarting</b> — those are labelled in
+          the UI and are unchecked by default.
+        </dd>
+
+        <dt>Do I need to understand networking?</dt>
+        <dd>
+          No. Pick a scenario by symptom (slow browsing / frequent drops / pages won't
+          open …), or read the full report where every conclusion comes with evidence.
+        </dd>
+
+        <dt>Does it support macOS or Linux?</dt>
+        <dd>No. Much of the detection relies on Windows netsh, the registry and WinINET APIs.</dd>
+      </dl>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-cols">
+      <div>
+        <h4>LanPulse</h4>
+        <p class="tiny">Network checkup &amp; one-click repair for Windows</p>
+      </div>
+      <div>
+        <h4>Project</h4>
+        <ul>
+          <li><a href="https://github.com/Levanll/LanPulse">GitHub repository</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/releases">All releases</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/CHANGELOG.md">Changelog</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Docs</h4>
+        <ul>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/README_EN.md">Readme</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/docs/设计方案.md">Design notes</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/docs/闭环实测报告.md">Closed-loop test report</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Other</h4>
+        <ul>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/LICENSE">MIT License</a></li>
+          <li><a href="https://github.com/Levanll/LanPulse/blob/main/SECURITY.md">Security</a></li>
+          <li><a href="../" class="lang-switch">中文</a></li>
+        </ul>
+      </div>
+    </div>
+    <p class="footer-note">
+      LanPulse v1.2.1 · Screenshots use synthetic data and contain nothing from any real machine.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>
