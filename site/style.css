@@ -175,20 +175,98 @@ a:hover { text-decoration: underline; }
 .note-box p { margin: 0; color: var(--text-dim); font-size: 0.94rem; }
 .note-box b { color: var(--text); }
 
-/* ---------- 截图 ---------- */
+/* ---------- 截图 ----------
+ *
+ * 为什么是横向缓慢流动的轨道，而不是网格：
+ *   网格里每张图只有 ~320px 宽，界面文字缩到看不清，等于展示了但没传达信息。
+ *   横向轨道上每张固定 720px，细节可辨；自动向左匀速滑动让六张图依次经过，
+ *   访客不需要自己滚动。鼠标进入轨道即暂停，点击某张图全屏放大。
+ *
+ * 为什么放大要"搬出去"而不是就地 transform：
+ *   轨道必须 overflow:hidden 才能隐藏循环两侧的溢出内容，而这个裁剪会连
+ *   放大后的图片一起切掉；且 sticky 顶栏（z-index:20）会盖住放大后的顶部。
+ *   所以点击时把图搬进一个 position:fixed 的浮层再渲染 —— 既不受裁剪，
+ *   也不受顶栏遮挡。具体逻辑见页面底部的内联脚本。
+ *
+ * 实现要点：
+ *   - 轨道里放**两组相同的 figure**，CSS 平移 -50% 后首尾正好衔接，循环无跳变；
+ *   - 动画加在 .shots-track 上，hover 时 animation-play-state: paused。
+ */
+
 .shots {
-  display: grid; gap: 22px;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  /* 这里**不能**设 overflow，也**不能**设 mask-image。
+     两者都会让元素建立裁剪/合成上下文，放大后的图会被切掉 —— 这正是前几版
+     踩过的坑：overflow:hidden 全裁；overflow-x:clip + overflow-y:visible 会被
+     规范规范化成 auto 仍然裁；mask-image 同样会裁。
+     横向溢出的问题交给 html 层的 overflow-x: hidden（见下方规则）。 */
+  padding: 34px 0 30px;
 }
-.shots figure { margin: 0; }
+
+/* 轨道的横向溢出由页面层裁掉，避免出现横向滚动条。
+   注意不能用 .shots 上的 overflow —— 会连带裁掉放大效果。
+   放大后的图在视口内（1.5 倍约 1080px < 常规视口宽），因此不受影响。 */
+html { overflow-x: hidden; }
+
+.shots-track {
+  display: flex;
+  gap: 22px;
+  width: max-content;
+  animation: shots-scroll 90s linear infinite;
+  will-change: transform;
+}
+
+/* 轨道内可悬停区域暂停，鼠标离开继续 */
+.shots:hover .shots-track,
+.shots:focus-within .shots-track {
+  animation-play-state: paused;
+}
+
+.shots figure {
+  margin: 0;
+  flex: 0 0 auto;
+  width: 720px;
+  position: relative;
+  z-index: 1;
+  transform-origin: center center;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 悬停的那张单独放大，并压住左右邻居。
+   放大是纯 transform，不改变布局，因此不会把后面的图挤走；
+   纵向溢出由 .shots 的 overflow-y: visible 放行。 */
+.shots figure:hover {
+  transform: scale(1.5);
+  z-index: 30;
+}
+
 .shots img {
   width: 100%; height: auto; display: block;
   border: 1px solid var(--line); border-radius: var(--radius);
   background: #000;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  transition: box-shadow 0.32s ease, border-color 0.32s ease;
 }
+
+.shots figure:hover img {
+  border-color: var(--accent);
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.85), 0 0 0 1px var(--accent-dim);
+}
+
 .shots figcaption {
   margin-top: 9px; font-size: 0.86rem; color: var(--text-faint);
   text-align: center;
+}
+
+/* 两段等长内容各走一半，无缝循环 */
+@keyframes shots-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* 窄屏：缩小单张宽度并加快节奏，避免一屏都放不下一张 */
+@media (max-width: 760px) {
+  .shots-track { animation-duration: 60s; }
+  .shots figure { width: 460px; }
 }
 
 /* ---------- 区域表 ---------- */
@@ -264,4 +342,15 @@ a:hover { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; }
   .btn:hover { transform: none; }
+
+  /* 关闭自动滑动后访客仍要能看到全部截图：
+     轨道改为可手动横向滚动。注意 .shots 本身仍不设 overflow
+     （否则放大效果会被裁），手动滚动交给轨道容器。 */
+  .shots-track {
+    animation: none;
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+  /* 缩小放大倍数，避免在小视口里溢出过多 */
+  .shots figure:hover { transform: scale(1.25); }
 }

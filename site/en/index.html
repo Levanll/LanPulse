@@ -132,31 +132,65 @@
       <h2>Screens</h2>
       <p class="section-sub">Screenshots use synthetic data (EXAMPLE-PC / 192.0.2.42) and contain nothing from any real machine</p>
 
+      <!--
+        A slowly left-scrolling screenshot rail.
+        It holds **two identical** sets of figures (the second aria-hidden); the CSS
+        shift of -50% makes the ends meet exactly, so the loop has no visible jump.
+        Hovering the rail pauses it; hovering one screenshot scales that one up.
+      -->
       <div class="shots">
-        <figure>
-          <img src="../assets/screenshot-dashboard-en.png" alt="Overview: health score and current network state" loading="lazy">
-          <figcaption>Overview · health score and current state</figcaption>
-        </figure>
-        <figure>
-          <img src="../assets/screenshot-scenario-en.png" alt="Scenarios: choose by symptom" loading="lazy">
-          <figcaption>Scenarios · pick by symptom, no jargon needed</figcaption>
-        </figure>
-        <figure>
-          <img src="../assets/screenshot-diagnose-en.png" alt="Diagnostics: verdicts with evidence" loading="lazy">
-          <figcaption>Diagnostics · every verdict carries its evidence</figcaption>
-        </figure>
-        <figure>
-          <img src="../assets/screenshot-repair-en.png" alt="Repair page" loading="lazy">
-          <figcaption>Repair · preview what changes, then decide</figcaption>
-        </figure>
-        <figure>
-          <img src="../assets/screenshot-backup-en.png" alt="Backups and rollback" loading="lazy">
-          <figcaption>Backups · the prior state of every change</figcaption>
-        </figure>
-        <figure>
-          <img src="../assets/screenshot-settings-en.png" alt="Settings page" loading="lazy">
-          <figcaption>Settings · language, region and probe policy</figcaption>
-        </figure>
+        <div class="shots-track">
+          <figure>
+            <img src="../assets/screenshot-dashboard-en.png" alt="Overview: health score and current network state" loading="lazy" width="1280" height="820">
+            <figcaption>Overview · health score and current state</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/screenshot-scenario-en.png" alt="Scenarios: choose by symptom" loading="lazy" width="1280" height="820">
+            <figcaption>Scenarios · pick by symptom, no jargon needed</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/screenshot-diagnose-en.png" alt="Diagnostics: verdicts with evidence" loading="lazy" width="1280" height="820">
+            <figcaption>Diagnostics · every verdict carries its evidence</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/screenshot-repair-en.png" alt="Repair page" loading="lazy" width="1280" height="820">
+            <figcaption>Repair · preview what changes, then decide</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/screenshot-backup-en.png" alt="Backups and rollback" loading="lazy" width="1280" height="820">
+            <figcaption>Backups · the prior state of every change</figcaption>
+          </figure>
+          <figure>
+            <img src="../assets/screenshot-settings-en.png" alt="Settings page" loading="lazy" width="1280" height="820">
+            <figcaption>Settings · language, region and probe policy</figcaption>
+          </figure>
+
+          <!-- Second copy: seamless loop only, skipped by screen readers -->
+          <figure aria-hidden="true">
+            <img src="../assets/screenshot-dashboard-en.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>Overview · health score and current state</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="../assets/screenshot-scenario-en.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>Scenarios · pick by symptom, no jargon needed</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="../assets/screenshot-diagnose-en.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>Diagnostics · every verdict carries its evidence</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="../assets/screenshot-repair-en.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>Repair · preview what changes, then decide</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="../assets/screenshot-backup-en.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>Backups · the prior state of every change</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="../assets/screenshot-settings-en.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>Settings · language, region and probe policy</figcaption>
+          </figure>
+        </div>
       </div>
     </div>
   </section>

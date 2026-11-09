@@ -449,6 +449,32 @@ v1.1.0 的中文稿直接从「首个公开版本。」开头，缺 `## 本次�
 v1.2.0 的正文含 `1.0.0`，那是它自己的一条修复记录（「发布流程把版本号解析成了 1.0.0」），
 不是旧版本内容。搜索旧版本痕迹时会误报，需看上下文再判断。
 
+### 落地页截图放大被裁切（连踩三次）
+
+给「界面」板块做「横向滑动画廊 + 悬停放大」时，放大后的图一直被上下切掉。三次尝试：
+
+| 尝试 | 写法 | 结果 |
+|---|---|---|
+| 1 | `.shots { overflow: hidden }` | 全裁，放大溢出部分完全不可见 |
+| 2 | `.shots { overflow-x: clip; overflow-y: visible }` | **仍裁**。CSS 规范规定 overflow 两个方向若一个非 visible，另一个的 `visible` 会被计算成 `auto` |
+| 3 | 去掉 overflow，改用 `mask-image` 做两侧渐隐 | **仍裁**。`mask-image` 同样建立裁剪/合成上下文 |
+
+**最终解法**：`.shots` 上**什么裁剪属性都不设**，横向溢出的裁剪交给
+`html { overflow-x: hidden }`（页面层），两侧渐隐效果**取消**。
+
+**验证方法**（不能只看 CSS 计算值，那会骗人）：
+
+```js
+// 用 elementFromPoint 检查溢出区域的命中元素
+const b = figure.getBoundingClientRect();
+document.elementFromPoint(cx, b.top + 15)   // 必须命中 IMG，不是 DIV.wrap
+```
+
+命中 `IMG`/`FIGCAPTION` 才算真的可见；命中背景元素说明仍被裁剪。
+
+**另注**：改完 CSS 后浏览器可能用缓存样式，测试时要给 stylesheet 加时间戳
+（`link.href = ... + '?v=' + Date.now()`）强制重载，否则会测到旧规则、误以为没生效。
+
 ---
 
 ## 八、开发约定
@@ -505,6 +531,15 @@ v1.2.0 的正文含 `1.0.0`，那是它自己的一条修复记录（「发布�
   忘了改就会 404。`check_consistency.py` 第 [8] 节和 `check_site.py` 都会拦
 
 预览：直接浏览器打开 `site/index.html` 即可，无需构建步骤。
+
+**「界面」板块是横向滚动画廊**，不是网格。要点：
+
+- 轨道里是**两份完全相同的 figure**（第二份 `aria-hidden`），CSS 平移 `-50%` 后
+  首尾正好衔接，循环无跳变。改截图时必须**同时改两份**，否则循环处会跳
+- 鼠标进入轨道即 `animation-play-state: paused`；悬停单张 `transform: scale(1.5)`
+- **`.shots` 上不能设 `overflow`，也不能设 `mask-image`** —— 两者都会建立裁剪
+  上下文，放大后的图会被切掉。横向溢出的裁剪由 `html { overflow-x: hidden }`
+  承担。这是踩过三次的坑，详见第七节
 
 ### 修改发布说明（Release body）
 

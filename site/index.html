@@ -128,31 +128,65 @@
       <h2>界面</h2>
       <p class="section-sub">截图使用合成数据（EXAMPLE-PC / 192.0.2.42），不含任何本机信息</p>
 
+      <!--
+        横向缓慢左移的截图轨道。
+        轨道里是**两份完全相同**的 figure（第二份 aria-hidden），CSS 平移 -50%
+        后首尾正好衔接，循环时看不出断点。鼠标移到轨道上会暂停；
+        移到某一张上它单独放大，便于看清界面细节。
+      -->
       <div class="shots">
-        <figure>
-          <img src="assets/screenshot-dashboard.png" alt="总览页：健康分与当前网络状态" loading="lazy">
-          <figcaption>总览 · 健康分与当前网络状态</figcaption>
-        </figure>
-        <figure>
-          <img src="assets/screenshot-scenario.png" alt="场景页：按症状选择" loading="lazy">
-          <figcaption>场景 · 不用懂技术名词，按症状选</figcaption>
-        </figure>
-        <figure>
-          <img src="assets/screenshot-diagnose.png" alt="诊断详情：带证据链的结论" loading="lazy">
-          <figcaption>诊断 · 每条结论都带证据链</figcaption>
-        </figure>
-        <figure>
-          <img src="assets/screenshot-repair.png" alt="一键修复页" loading="lazy">
-          <figcaption>修复 · 先预览改什么，再决定执行</figcaption>
-        </figure>
-        <figure>
-          <img src="assets/screenshot-backup.png" alt="备份与回滚页" loading="lazy">
-          <figcaption>备份 · 每次修改的原状都在这里</figcaption>
-        </figure>
-        <figure>
-          <img src="assets/screenshot-settings-zh.png" alt="设置页" loading="lazy">
-          <figcaption>设置 · 语言、区域与探测策略</figcaption>
-        </figure>
+        <div class="shots-track">
+          <figure>
+            <img src="assets/screenshot-dashboard.png" alt="总览页：健康分与当前网络状态" loading="lazy" width="1280" height="820">
+            <figcaption>总览 · 健康分与当前网络状态</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/screenshot-scenario.png" alt="场景页：按症状选择" loading="lazy" width="1280" height="820">
+            <figcaption>场景 · 不用懂技术名词，按症状选</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/screenshot-diagnose.png" alt="诊断详情：带证据链的结论" loading="lazy" width="1280" height="820">
+            <figcaption>诊断 · 每条结论都带证据链</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/screenshot-repair.png" alt="一键修复页" loading="lazy" width="1280" height="820">
+            <figcaption>修复 · 先预览改什么，再决定执行</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/screenshot-backup.png" alt="备份与回滚页" loading="lazy" width="1280" height="820">
+            <figcaption>备份 · 每次修改的原状都在这里</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/screenshot-settings-zh.png" alt="设置页" loading="lazy" width="1280" height="820">
+            <figcaption>设置 · 语言、区域与探测策略</figcaption>
+          </figure>
+
+          <!-- 第二份：仅用于无缝循环，屏幕阅读器跳过 -->
+          <figure aria-hidden="true">
+            <img src="assets/screenshot-dashboard.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>总览 · 健康分与当前网络状态</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="assets/screenshot-scenario.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>场景 · 不用懂技术名词，按症状选</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="assets/screenshot-diagnose.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>诊断 · 每条结论都带证据链</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="assets/screenshot-repair.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>修复 · 先预览改什么，再决定执行</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="assets/screenshot-backup.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>备份 · 每次修改的原状都在这里</figcaption>
+          </figure>
+          <figure aria-hidden="true">
+            <img src="assets/screenshot-settings-zh.png" alt="" loading="lazy" width="1280" height="820">
+            <figcaption>设置 · 语言、区域与探测策略</figcaption>
+          </figure>
+        </div>
       </div>
     </div>
   </section>
