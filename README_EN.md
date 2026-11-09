@@ -15,7 +15,7 @@
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6?style=flat-square&logo=windows)](https://www.microsoft.com/windows)
 [![i18n](https://img.shields.io/badge/i18n-%E4%B8%AD%E6%96%87%20%7C%20English-00E5A0?style=flat-square)](#)
 
-**[Home](https://github.com/Levanll/LanPulse)** ｜ **English** ｜ [中文](README.md)
+**[Website](https://levanll.github.io/LanPulse/en/)** ｜ [Repository](https://github.com/Levanll/LanPulse) ｜ **English** ｜ [中文](README.md)
 
 ![LanPulse](docs/images/hero-banner-en.png)
 
