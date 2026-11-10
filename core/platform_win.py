@@ -219,7 +219,12 @@ class AdapterInfo:
     dns_v4: list[str] = field(default_factory=list)
     dns_v6: list[str] = field(default_factory=list)
     dhcp: bool = False
+    #: IP 层 MTU（NlMtu）。这是 netsh 读写的那一个，也是决定"能不能过大包"的那一个。
+    #: **所有修复动作、检测判定、备份与回滚都必须用它**，不能用 link_mtu。
     mtu: int = 0
+    #: 链路层 MTU（NDIS MtuSize）。由驱动决定，通常 ≥ ip MTU，改不动也不该改。
+    #: 仅用于诊断展示：两者不等说明上层做了封装（VPN/PPPoE/隧道）。
+    link_mtu: int = 0
     is_virtual: bool = False
 
     @property
@@ -247,6 +252,7 @@ class AdapterInfo:
             "dns_v6": self.dns_v6,
             "dhcp": self.dhcp,
             "mtu": self.mtu,
+            "link_mtu": self.link_mtu,
             "is_virtual": self.is_virtual,
         }
 
@@ -271,9 +277,17 @@ $gws = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue
     Select-Object InterfaceIndex, NextHop, RouteMetric, InterfaceMetric
 $dns = Get-DnsClientServerAddress -ErrorAction SilentlyContinue |
     Select-Object InterfaceIndex, AddressFamily, ServerAddresses
+# NlMtu 是 IP 层 MTU，正是 netsh interface ipv4 set subinterface mtu= 读写的那个。
+# Get-NetAdapter 的 MtuSize 是 NDIS 链路层值，两者在有封装时并不相等
+# （本机实测以太网 MtuSize=1500 / NlMtu=1492）。修复动作必须以 NlMtu 为准，
+# 否则会出现"写入 1492 却读回 1500，verify 永久失败，回滚再把 1492 改成 1500"。
+$nlmtu = Get-NetIPInterface -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+    Select-Object InterfaceIndex, NlMtu
 foreach ($a in $adapters) {
     $a | Add-Member -NotePropertyName Ips -NotePropertyValue @($addrs | Where-Object { $_.InterfaceIndex -eq $a.ifIndex } ) -Force
     $a | Add-Member -NotePropertyName Ips6 -NotePropertyValue @($addrs6 | Where-Object { $_.InterfaceIndex -eq $a.ifIndex } ) -Force
+    $nl = $nlmtu | Where-Object { $_.InterfaceIndex -eq $a.ifIndex } | Select-Object -First 1
+    $a | Add-Member -NotePropertyName NlMtu -NotePropertyValue $(if ($nl) { $nl.NlMtu } else { 0 }) -Force
     $a | Add-Member -NotePropertyName Gateway -NotePropertyValue (@($gws | Where-Object { $_.InterfaceIndex -eq $a.ifIndex }) | Sort-Object InterfaceMetric | Select-Object -First 1) -Force
     $a | Add-Member -NotePropertyName Dns -NotePropertyValue @($dns | Where-Object { $_.InterfaceIndex -eq $a.ifIndex }) -Force
 }
@@ -326,7 +340,10 @@ def collect_adapters() -> list[AdapterInfo]:
                 dns_v4 = servers
             elif str(fam) in ("23", "IPv6", "InterNetworkV6"):
                 dns_v6 = servers
-        mtu = it.get("MtuSize")
+        # NlMtu 优先；取不到时退回 MtuSize 并记 0，由调用方决定是否可信。
+        # 不能把 MtuSize 当作 IP MTU 用——那正是本模块曾经的缺陷。
+        nl_mtu = it.get("NlMtu")
+        link_mtu = it.get("MtuSize")
         out.append(
             AdapterInfo(
                 name=name,
@@ -348,7 +365,10 @@ def collect_adapters() -> list[AdapterInfo]:
                     for i in ips
                     if isinstance(i, dict)
                 ),
-                mtu=int(mtu) if isinstance(mtu, (int, str)) and str(mtu).isdigit() else 0,
+                mtu=int(nl_mtu) if isinstance(nl_mtu, (int, str))
+                and str(nl_mtu).isdigit() else 0,
+                link_mtu=int(link_mtu) if isinstance(link_mtu, (int, str))
+                and str(link_mtu).isdigit() else 0,
                 is_virtual=any(h in blob for h in _VIRTUAL_HINTS),
             )
         )

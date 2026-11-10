@@ -16,7 +16,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-ROOT = Path(r"D:\Documents\deepseek-harness\default-workspace\lanpulse")
+# 仓库根从本文件位置反推（tools/ 的上一级），不写死本机绝对路径——
+# 写死会让脚本换机/换目录即废，也会被 privacy_audit 命中"本机绝对路径"。
+ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 try:
     from _console import setup_console

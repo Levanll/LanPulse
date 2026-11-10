@@ -187,3 +187,150 @@ class TestRestartBoundary:
             assert isinstance(kind, str) and kind, "kind 常量不能为空"
         # 回滚分派表与常量集合必须同步：漏一个就会走到『未知的备份类型』分支
         assert len(handled) == 9, "新增 kind 时必须同步更新回滚分派与每个动作的 backup()"
+
+# --------------------------------------------------------------------------- #
+# MTU 语义：IP 层 vs 链路层
+# --------------------------------------------------------------------------- #
+class TestMtuSemantics:
+    """MTU 必须用 IP 层值（NlMtu），不能用链路层值（MtuSize）。
+
+    真实事故（2026-11-10 发现）：`collect_adapters()` 曾用 Get-NetAdapter 的
+    MtuSize 填充 AdapterInfo.mtu，而 `netsh interface ipv4 set subinterface
+    mtu=` 写的是 IP 层 NlMtu。本机两者恰好是 1500 与 1492，于是：
+
+      * verify 拿写入值 1492 去比读回的 1500，永远失败；
+      * backup 记录的是 1500，回滚把 1492 "还原"成 1500，反而制造新偏差；
+      * SKIP 判定失真——真需要修的时候可能判定为"已是最优"。
+
+    本机不需要构造就能复现，所以这条用静态契约锁死，不依赖运行环境。
+    """
+
+    def test_adapterinfo_exposes_both_levels(self):
+        from core.platform_win import AdapterInfo
+
+        a = AdapterInfo(name="X", mtu=1492, link_mtu=1500)
+        assert a.mtu == 1492, "mtu 字段必须是 IP 层（NlMtu）"
+        assert a.link_mtu == 1500, "link_mtu 才是链路层（MtuSize）"
+        d = a.to_dict()
+        assert d["mtu"] == 1492 and d["link_mtu"] == 1500
+
+    def test_collect_uses_nlmtu_not_mtusize(self):
+        """采集脚本必须查 Get-NetIPInterface，且 AdapterInfo.mtu 取自 NlMtu。"""
+        src = (ROOT / "core" / "platform_win.py").read_text(encoding="utf-8")
+        assert "Get-NetIPInterface" in src, "必须采集 IP 层 MTU"
+        assert "NlMtu" in src, "必须读取 NlMtu 字段"
+        # mtu= 的赋值必须来自 NlMtu，不能来自 MtuSize
+        assert 'mtu=int(nl_mtu)' in src, "AdapterInfo.mtu 必须由 NlMtu 填充"
+        assert 'link_mtu=int(link_mtu)' in src, "link_mtu 才用 MtuSize"
+
+    def test_repair_paths_use_ip_mtu(self):
+        """修复动作与回滚只能读 .mtu（IP 层），不得读 .link_mtu。"""
+        for rel in ("core/repair/mtu_actions.py", "core/repair/rollback.py",
+                    "core/checks/mtu_check.py"):
+            src = (ROOT / rel).read_text(encoding="utf-8")
+            assert ".link_mtu" not in src, f"{rel} 不得使用链路层 MTU"
+
+class TestRefreshAdaptersContract:
+    """备份前刷新网卡快照：只容忍"没有这个方法"，不得吞掉内部异常。
+
+    真实事故（2026-11-10 闭环暴露）：`DiagnosticContext.adapters` 首次采集后
+    永久缓存，`mtu.optimize` 的 backup() 因此读到体检时的旧 MTU（1492），
+    而系统早已被改成 1400；回滚便"恢复"到 1492 —— 既不是用户原值，也不是
+    被修的值，报告却显示 rolled_back=True。
+
+    修法是在 execute() 备份前调 ctx.refresh_adapters()。当时用
+    `try/except AttributeError: pass` 包着，代价是 refresh 内部若真抛
+    AttributeError 会被静默吞掉，不变量悄悄退回原状。改用 getattr 探测后，
+    只有"没有这个方法"被容忍。
+    """
+
+    def test_engine_calls_refresh_before_backup(self):
+        src = (ROOT / "core" / "repair" / "engine.py").read_text(encoding="utf-8")
+        assert "refresh_adapters" in src, "必须在备份前刷新网卡快照"
+        # 关键：不能是 try/except AttributeError 包法。
+        # 必须先剥掉注释再断言——engine.py 里那段解释性注释正写着这几个字，
+        # 直接搜源码会命中注释本身（和门禁里"注释被当成一节"是同一类错误）。
+        code = "\n".join(
+            line.split("#", 1)[0] for line in src.splitlines())
+        assert "except AttributeError" not in code, \
+            "不得用 except AttributeError 兜底——会连内部真实异常一起吞掉"
+        assert 'getattr(ctx, "refresh_adapters", None)' in code, \
+            "应使用 getattr 探测，只容忍缺少方法这一种情况"
+
+    def test_refresh_failure_propagates(self):
+        """refresh_adapters() 内部抛异常时，必须向上传播而不是被吞掉。"""
+        from core.repair.engine import RepairEngine
+
+        class _Ctx:
+            #: 真实 DiagnosticContext 具备的最小表面
+            primary = None
+            adapters: list = []
+            _cache: dict = {}
+
+            def refresh_adapters(self):
+                raise AttributeError("模拟采集链路里的属性名写错")
+
+        eng = RepairEngine(dry_run=True)
+        with pytest.raises(AttributeError):
+            # 直接走 execute 的备份前置段：空计划也会先刷新再建会话
+            from core.repair.engine import RepairPlan
+            eng.execute(RepairPlan(action_ids=[]), _Ctx())
+
+    def test_missing_method_is_tolerated(self):
+        """没有 refresh_adapters 的轻量 ctx（测试替身）应当被放过。"""
+        from core.repair.engine import RepairEngine, RepairPlan
+
+        class _Bare:
+            primary = None
+            adapters: list = []
+            _cache: dict = {}
+
+        eng = RepairEngine(dry_run=True)
+        # 不应抛异常
+        eng.execute(RepairPlan(action_ids=[]), _Bare())
+
+class TestMtuAliasResolution:
+    """netsh 别名解析必须整列精确匹配，不能做子串包含。
+
+    「以太网」是「以太网 2」「以太网 3」的前缀。闭环脚本 _mtu_now() 用
+    `if alias in line` 匹配时，会先命中排在前面的另一块网卡，把它的 MTU
+    当成目标网卡的值——而这段代码的职责正是独立裁决，读错一块网卡会让
+    构造、修复、复原三个判据同时失真。
+    """
+
+    SAMPLE = """\
+
+       MTU  MediaSenseState      Bytes In     Bytes Out  Interface
+----------  ---------------  ------------  ------------  -------------
+4294967295                1             0        138882  Loopback Pseudo-Interface 1
+      1492                1     495792911    2928959147  RelyVPN
+      1500                5             0             0  本地连接
+      1500                5             0             0  以太网 2
+      1492                1   12134076157   3927986700  以太网
+"""
+
+    def _resolve(self, alias: str) -> int:
+        """复刻 closed_loop_v12._mtu_now 的解析逻辑（不依赖真实 netsh）。"""
+        import re
+
+        pat = re.compile(r"^\s*(?P<mtu>\d+)\s+(?P<state>\d+)\s+"
+                         r"(?P<in>\d+)\s+(?P<out>\d+)\s+(?P<alias>.+?)\s*$")
+        for line in self.SAMPLE.splitlines():
+            m = pat.match(line)
+            if not m:
+                continue
+            if m.group("alias") == alias:
+                return int(m.group("mtu"))
+        raise LookupError(alias)
+
+    def test_prefix_alias_does_not_shadow_longer_one(self):
+        # 关键回归：以太网 1492，以太网 2 是 1500，不能互相串
+        assert self._resolve("以太网") == 1492
+        assert self._resolve("以太网 2") == 1500
+
+    def test_script_uses_exact_match(self):
+        src = (ROOT / "tools" / "closed_loop_v12.py").read_text(encoding="utf-8")
+        code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
+        assert 'm.group("alias")' in code, "别名必须从解析出的列取值"
+        assert "== alias" in code, "必须整列精确比较，不能 alias in line"
+        assert "alias in line" not in code, "不得对整行做子串匹配"

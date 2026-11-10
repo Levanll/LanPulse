@@ -304,7 +304,7 @@ Safety written only in the docs doesn't count. It has to be visible while you op
         ▼                               ▼                               ▼
 ┌───────────────┐             ┌──────────────────┐            ┌─────────────────┐
 │  app/ui/      │  read only  │  core/           │ only system │  app/report.py  │
-│  7 pages+set. │ ──────────▶ │  check engine    │ write path  │  HTML/JSON/TXT  │
+│  9 pages+set. │ ──────────▶ │  check engine    │ write path  │  HTML/JSON/TXT  │
 │  widgets/theme│             │  repair + backup │ ─────────▶  │  app/logging_   │
 └───────┬───────┘             └────────┬─────────┘             │  setup (audit)  │
         │                              │                       └─────────────────┘
@@ -331,14 +331,14 @@ LanPulse/
 ├── core/                  check & repair engines (no UI dependency)
 │   ├── models.py          the single contract: CheckResult / DiagnosticReport / ActionResult
 │   ├── registry.py        check registration and exception isolation
-│   ├── checks/            11 check units
+│   ├── checks/            14 check units
 │   ├── repair/            15 atomic actions + transaction orchestration + rollback
 │   ├── backup.py          backup/rollback layer (the only path that writes the system)
 │   ├── region.py          region profiles and network-environment detection
 │   ├── settings.py        persisted settings
 │   └── i18n.py            runtime language switching
 ├── app/
-│   ├── ui/                theme, custom widgets, 7 pages
+│   ├── ui/                theme, custom widgets, 9 pages
 │   ├── report.py          HTML / JSON / TXT report export
 │   ├── sysutil.py         elevation / single instance / environment self-check
 │   ├── i18n_zh.py / i18n_en.py

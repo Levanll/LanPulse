@@ -72,7 +72,111 @@ def iter_text_files():
         yield p
 
 
+def _page_count() -> int:
+    """界面页数：静态读 main_window 里实际实例化的页面，而不是数文档。
+
+    直接 import app.ui.main_window 会把整个 PySide6 拖进来（慢，且在无显示
+    环境可能失败），所以读源码。文档里长期写 "7 个页面"，实际是 9 个——
+    因为没人会对着一张目录树图去核对。
+    """
+    src = ROOT / "app" / "ui" / "main_window.py"
+    if not src.is_file():
+        return 0
+    text = src.read_text(encoding="utf-8")
+    # 数实际被放进 stack 的页面实例，而不是数常量：设置页没有 PAGE_ 前缀
+    # （它叫 SETTINGS_INDEX），按常量数会少一个，正是文档写 7 个的由来。
+    return len(re.findall(r"self\.\w+ = \w+Page\(", text))
+
+
+def _closed_loop_actions() -> set[str]:
+    """从闭环脚本里反推"真正跑过真实闭环"的动作集合。
+
+    文档里的覆盖数没有可靠来源——它是手写的，且手写过一次 10（实际 7）。
+    真实来源只有脚本本身：动作出现在闭环脚本的动作清单里，才意味着它被
+    执行过 apply + verify + rollback 三轮并留下快照。
+    """
+    actions: set[str] = set()
+    for rel, var in (("tools/closed_loop_test.py", "TEST_ACTIONS"),
+                     ("tools/closed_loop_v12.py", "TARGETS")):
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        m = re.search(rf"^{var}\s*=\s*\[(.*?)\]", text, re.S | re.M)
+        if not m:
+            continue
+        actions.update(re.findall(r'"([a-z_]+\.[a-z_]+)"', m.group(1)))
+    return actions
+
+
+def _count_tests() -> int:
+    """静态数出 pytest 收集到的用例数，不真跑 pytest。
+
+    为什么静态数：门禁要在 CI 与本地都够快，跑一遍测试会执行用户环境上的
+    真实代码；而"文档里的数字对不对"只需要用例个数。
+
+    **必须展开参数化**：pytest 把 `@pytest.mark.parametrize` 的每个参数组
+    各算一个用例。只数 `def test_*` 会数出 135 而实际是 143，两者差 8，
+    正是 test_grade_boundaries 那 9 组参数（9-1=8）。
+    静态计数与真实结果不一致的门禁，比没有门禁更糟——它会逼着人把文档
+    改成错数字。
+    """
+    total = 0
+    for path in sorted((ROOT / "tests").rglob("test_*.py")):
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        # 先数普通用例
+        n_func = len(re.findall(r"^\s*def test_\w+\s*\(", text, re.M))
+        total += n_func
+        # 再把参数化的组数折算进来：每个 parametrize 装饰器把紧随其后的
+        # 那个 test 从 1 个展开为 N 个，因此补 (N-1)。
+        for m in re.finditer(
+                r"@pytest\.mark\.parametrize\([^\[]*\[([\s\S]*?)\]\)\s*\n"
+                r"\s*def test_", text):
+            body = m.group(1)
+            # 每组参数是一个元组或单值，按顶层 (…) / , 计组数
+            groups = len(re.findall(r"\([^()]*\)", body))
+            if groups == 0:
+                groups = len([x for x in body.split(",") if x.strip()])
+            total += max(0, groups - 1)
+    return total
+
+
+def _section(text: str, start: str, end: str) -> str:
+    """取 text 中 start 之后、end 之前的片段（都找不到就返回空串）。"""
+    i = text.find(start)
+    if i < 0:
+        return ""
+    j = text.find(end, i)
+    return text[i: j if j > 0 else len(text)]
+
+
+#: 运行期实际执行过的「节」数量。由 section() 在每节真正开始时 +1，
+#: 不依赖任何对源码字面量的扫描（那种做法会被注释里的同样文本骗过）。
+_SECTIONS_SEEN = 0
+
+
+def section(title: str) -> None:
+    """开始一节：打印小标题并登记。
+
+    所有节都必须通过它进入，否则 [10] 统计到的规模会与真实执行不符。
+    """
+    global _SECTIONS_SEEN
+    _SECTIONS_SEEN += 1
+    print(f"\n{title}")
+
+
+#: 运行期实际执行的子检查数量。文档里的"N 项交叉校验"必须等于它——
+#: 这个数字曾长期写作 18，而脚本实际跑 20 项，没人发现，因为没有任何
+#: 东西去核对。现在由脚本自己数自己，文档只是被核对的对象。
+_CHECKS_RUN = 0
+
+
 def check(msg: str, ok: bool, detail: str = "") -> bool:
+    global _CHECKS_RUN
+    _CHECKS_RUN += 1
     mark = "[OK]  " if ok else "[FAIL]"
     print(f"  {mark} {msg}")
     if detail and not ok:
@@ -93,36 +197,51 @@ def main() -> int:
           f"场景 {n_scenarios} 个 / 版本 {VERSION}\n")
 
     # ---- 1. 文档中的数量声明 ----
-    print("[1] 数量声明")
-    patterns = [
-        ("11 项", n_checks == 11), ("11 checks", n_checks == 11),
-        ("11 个", n_checks == 11),
-    ]
+    # 这里不再写死某个过期数字（如 "11 项"），而是把「数字 + 量词」整体抓出来
+    # 与真实值比对。写死法漏过一次真实缺陷：README_EN 的 "11 check units"
+    # 因为量词是 "check units" 而不是 "checks"，三套死 token 全都没匹配上，
+    # 门禁绿灯放行了半年。任何新量词都不该再成为盲区。
+    section("[1] 数量声明")
+    page_count = _page_count()
+    # 严格组：这些措辞只在陈述"总量"时出现，数字必须等于真实值。
+    strict = {
+        "check": (n_checks, r"(\d+)\s*(?:项检测|个检测单元|个检测项|check units)"),
+        "page": (page_count, r"(\d+)\s*(?:个页面|pages)"),
+        "action": (n_actions, r"(\d+)\s*(?:个修复动作|个原子动作|atomic actions|reversible actions|reversible fixes)"),
+        "scenario": (n_scenarios, r"(\d+)\s*(?:个场景|scenarios)"),
+    }
+    # 宽松组：`N checks` 既可能是总量，也可能是场景表里的"本场景查 7 项"。
+    # 子集必然 ≤ 总量，所以只拦"超过总量"这种不可能值，不拦小的子集。
+    loose_max = n_checks
     stale = []
     for p in iter_text_files():
+        # 历史记录按定义就是旧的；脚本自身含示例文本
         if p.name in ("CHANGELOG.md", "check_consistency.py"):
             continue
-        # 工具脚本里的示例文本不算文档声明
         if p.parent.name == "tools":
+            continue
+        # 发布说明是不可改写的历史快照，不参与"当前状态"校验
+        if "release-notes" in str(p) or "对比分析" in str(p):
             continue
         try:
             s = p.read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
-        for token, valid in patterns:
-            if valid:
-                continue
-            for m in re.finditer(re.escape(token), s):
-                ln = s[: m.start()].count("\n") + 1
-                line = s.splitlines()[ln - 1].strip()
-                # 排除对比文档里的历史描述
-                if "对比分析" in str(p):
-                    continue
-                stale.append((p.relative_to(ROOT), ln, token, line[:60]))
-    failures += 0 if check("文档中无过期的『11 项』声明", not stale,
+        for label, (truth, pat) in strict.items():
+            for i, line in enumerate(s.splitlines(), 1):
+                for m in re.finditer(pat, line):
+                    if int(m.group(1)) != truth:
+                        stale.append((p.relative_to(ROOT), i, label,
+                                      line.strip()[:70]))
+        for i, line in enumerate(s.splitlines(), 1):
+            for m in re.finditer(r"(?<![\d.])(\d+)\s*checks?\b", line):
+                if int(m.group(1)) > loose_max:
+                    stale.append((p.relative_to(ROOT), i, "check>max",
+                                  line.strip()[:70]))
+    failures += 0 if check("文档中的数量声明与实际一致", not stale,
                            f"{len(stale)} 处") else 1
-    for item in stale[:8]:
-        print(f"         {item[0]}:{item[1]}  {item[3]}")
+    for item in stale[:10]:
+        print(f"         {item[0]}:{item[1]} [{item[2]}]  {item[3]}")
 
     # 文档必须声明正确的数量
     readme = ROOT / "README.md"
@@ -137,7 +256,7 @@ def main() -> int:
         failures += 0 if check(f"README_EN.md 声明了『{n_checks} checks』", ok) else 1
 
     # ---- 2. 版本号一致 ----
-    print("\n[2] 版本号")
+    section("[2] 版本号")
     iss = ROOT / "installer" / "LanPulse.iss"
     if iss.is_file():
         # 只匹配行首为 #define 的行（跳过 ; 开头的注释示例）
@@ -205,7 +324,7 @@ def main() -> int:
                                False, f"{type(exc).__name__}: {exc}") else 1
 
     # ---- 3. 品牌名残留 ----
-    print("\n[3] 品牌名")
+    section("[3] 品牌名")
     leftovers = []
     for p in iter_text_files():
         try:
@@ -229,12 +348,12 @@ def main() -> int:
         print(f"         {p}")
 
     # ---- 4. 数据目录名 ----
-    print("\n[4] 数据目录")
+    section("[4] 数据目录")
     failures += 0 if check(f"数据目录为 {DATA_DIR_NAME}",
                            DATA_DIR_NAME == NAME) else 1
 
     # ---- 5. 截图与引用 ----
-    print("\n[5] 截图")
+    section("[5] 截图")
     img_dir = ROOT / "docs" / "images"
     for readme_name, suffix in (("README.md", ""), ("README_EN.md", "-en")):
         p = ROOT / readme_name
@@ -257,7 +376,7 @@ def main() -> int:
                                    ", ".join(bad[:3])) else 1
 
     # ---- 6. i18n ----
-    print("\n[6] 国际化")
+    section("[6] 国际化")
     try:
         from app import i18n_en, i18n_zh
 
@@ -272,7 +391,7 @@ def main() -> int:
     # 页内锚点与相对链接最容易在改名后失效，且没人会去点。
     # 曾经两个 README 的「回到顶部」都指向旧品牌的小写锚点，全是断的；
     # 品牌检查没抓到，因为它匹配的是驼峰写法，而锚点全小写。
-    print("\n[7] README 内部链接")
+    section("[7] README 内部链接")
     for readme_name in ("README.md", "README_EN.md"):
         p = ROOT / readme_name
         if not p.is_file():
@@ -309,7 +428,7 @@ def main() -> int:
     # 落地页的下载链接把版本号写在文件名里（/releases/latest/download/
     # 需要固定文件名），所以每次发版都必须同步改页面，否则用户点下载会 404。
     # 这里只做"是否一致"的粗检；页面级细节交给 tools/check_site.py。
-    print("\n[8] 站点")
+    section("[8] 站点")
     site = ROOT / "site"
     if site.is_dir():
         html_files = sorted(site.rglob("*.html"))
@@ -338,6 +457,78 @@ def main() -> int:
         failures += 0 if check("站点截图与 docs/images 一致",
                                not out_of_sync,
                                "先跑 tools/sync_site_assets.py：" + ", ".join(out_of_sync[:3])) else 1
+
+    # ---- 9. 闭环实测覆盖 ----
+    # 这个数字曾在 HANDOFF 里被写成 10/15，实际只有 7 个动作跑过真实闭环：
+    # 把 dns.set_public / dns.flush_cache 在"已测清单"和"另有 dns.* 两项"
+    # 里各数了一次。对一个把"诚实边界"当卖点的项目，夸大安全性比漏洞更糟。
+    # 唯一来源是闭环脚本里的动作清单，不是文档里的手写数字。
+    section("[9] 闭环实测覆盖")
+    tested = _closed_loop_actions()
+    failures += 0 if check(
+        f"闭环脚本覆盖 {len(tested)} / {n_actions} 个动作",
+        bool(tested) and all(a in ACTIONS for a in tested),
+        "脚本里出现了未登记的动作 id：" +
+        ", ".join(sorted(a for a in tested if a not in ACTIONS))) else 1
+
+    # HANDOFF 的"已测"清单必须与脚本完全一致（双向：多写和少写都算错）
+    handoff = ROOT / "HANDOFF.md"
+    if handoff.is_file():
+        text = handoff.read_text(encoding="utf-8")
+        m = re.search(r"闭环实测覆盖 (\d+)/(\d+) 个动作", text)
+        claimed = int(m.group(1)) if m else -1
+        failures += 0 if check(
+            f"HANDOFF 声明覆盖 {len(tested)}/{n_actions} 个动作",
+            claimed == len(tested) and m and int(m.group(2)) == n_actions,
+            f"HANDOFF 写的是 {claimed}，脚本实际 {len(tested)}") else 1
+
+        # 已测清单逐项比对：文档列出的每个 id 必须真在脚本里
+        listed = set(re.findall(
+            r"`((?:dns|proxy|hosts|tcp|mtu|adapter|firewall|netbios)\.[a-z_]+)`",
+            _section(text, "3. **闭环实测覆盖", "未测：")))
+        extra = sorted(listed - tested)
+        failures += 0 if check("HANDOFF 已测清单与脚本一致", not extra,
+                               ", ".join(extra)) else 1
+
+    # ---- 10. 测试数量 ----
+    # "140 项测试"曾长期写死在 HANDOFF 四处，实际早已是 143。
+    # 与其它数字同理：不手写，从测试源码数出来。
+    section("[10] 测试数量")
+    n_tests = _count_tests()
+    if n_tests:
+        print(f"         实际用例：{n_tests} 项")
+        handoff = ROOT / "HANDOFF.md"
+        if handoff.is_file():
+            claimed = {int(n) for n in
+                       re.findall(r"(\d+)\s*项测试", handoff.read_text(encoding="utf-8"))}
+            claimed |= {int(n) for n in re.findall(
+                r"pytest tests -q\s*\|\s*(\d+) 项",
+                handoff.read_text(encoding="utf-8"))}
+            failures += 0 if check(
+                f"HANDOFF 的测试数与实际一致（{n_tests}）",
+                claimed == {n_tests},
+                f"HANDOFF 写的是 {sorted(claimed) or '未找到'}") else 1
+
+    # ---- 11. 门禁自身规模 ----
+    # 文档长期写"18 项"，而脚本实际跑 20 项且从未被核对过。根因是
+    # "项"这个单位本身模糊：它既可以是"节"，也可以是"子检查"。
+    # 现在对外口径统一为**节数**（结构稳定），子检查数一并打印但不管制。
+    section("[11] 门禁自身规模")
+    # 只认**真的执行过**的节：section() 每被调用一次就登记一次。
+    # 这里绝不能去数源码里的 print("\n[N] ...") 字面量——注释里写一句
+    # 同一段文字就会被算成一节。上一版正是如此：第 449 行那条解释性注释
+    # 抵消了第 [1] 节漏写的前导 "\n"，凑巧还得出了正确的 10，
+    # 于是"数字对得上"这件事本身失去了意义。
+    n_sections = _SECTIONS_SEEN
+    print(f"         共 {n_sections} 节 / {_CHECKS_RUN + 1} 项子检查")
+    handoff = ROOT / "HANDOFF.md"
+    if handoff.is_file():
+        text = handoff.read_text(encoding="utf-8")
+        claimed = {int(n) for n in re.findall(r"(\d+)\s*节交叉校验", text)}
+        failures += 0 if check(
+            f"文档声明的节数 == 实际的 {n_sections} 节",
+            claimed == {n_sections},
+            f"文档写的是 {sorted(claimed) or '未找到'}") else 1
 
     print("\n" + "=" * 66)
     if failures == 0:

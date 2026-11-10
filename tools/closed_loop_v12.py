@@ -76,7 +76,22 @@ TARGETS = [
     # 第一档遗留项：只改一个 DWORD，且回滚有两条路径
     # （reg export 成功则整项导入；原本不存在则删除值），验证成本最低。
     "netbios.disable_public",
+    # 需要参数的动作：target_mtu 从 MTU_CONSTRUCT 取，不走 plan() 的默认路径。
+    # 选 1400 是因为它低于常见的 1500/1492，且远高于 1280（IPv6 最小 MTU），
+    # 改错方向也不至于让 TCP 立刻不可用；改动本身在几分钟内就会被还原。
+    "mtu.optimize",
 ]
+
+#: mtu.optimize 的构造参数。取 1400（非本机现值），确保"需要修"这个前提成立。
+MTU_CONSTRUCT = 1400
+
+#: 闭环里充当"实测出的最优 MTU"。取 1472（1500-28），是标准以太网无分片的
+#: 最大 payload；与构造态 1400 必然不同，确保 apply 真的会写。
+MTU_FIX_TO = 1472
+
+#: 构造/还原函数需要 ctx（取主网卡）。FABRICATE 的签名保持无参，
+#: 由 main() 在运行前注入，避免为单个动作改动整张表的结构。
+_CTX: DiagnosticContext | None = None
 
 
 def log(msg: str = "") -> None:
@@ -241,12 +256,85 @@ def _restore_netbios(original_json: str) -> None:
         _write_options(guid, int(value))
 
 
+def _mtu_now(alias: str) -> int:
+    """读 IP 层 MTU（NlMtu）。必须用 netsh 读，不能用 AdapterInfo.mtu——
+    后者在修好之前正是缺陷所在，而闭环脚本要做的是独立第三方判决。
+
+    **按 Interface 整列精确匹配，不能对整行做子串匹配。**
+    netsh 输出里别名是最后一列，而「以太网」是「以太网 2」「以太网 3」的
+    前缀：子串匹配会先命中排在前面的另一块网卡，把它的 MTU 当成目标网卡的
+    值。这段代码的职责正是独立裁决，读错一块网卡会让构造、修复、复原三个
+    判据同时失真，结论变成假通过。
+
+    解析方式：每行的固定列是 MTU / MediaSenseState / Bytes In / Bytes Out，
+    之后剩余部分整体就是别名（别名本身含空格，不能按空格切最后一列）。
+    """
+    import re as _re
+
+    if not alias:
+        raise RuntimeError("_mtu_now 需要网卡别名")
+    rc, out = pw.run_cmd(["netsh", "interface", "ipv4", "show", "subinterfaces"], timeout=20)
+    if rc != 0 or not out:
+        raise RuntimeError(f"读取 subinterfaces 失败：rc={rc}")
+
+    # 前四列是数字，第五列起是别名（可含空格）。s+ 分隔、别名取到行尾。
+    pat = _re.compile(r"^\s*(?P<mtu>\d+)\s+(?P<state>\d+)\s+"
+                      r"(?P<in>\d+)\s+(?P<out>\d+)\s+(?P<alias>.+?)\s*$")
+    seen: list[str] = []
+    for line in out.splitlines():
+        m = pat.match(line)
+        if not m:
+            continue                      # 表头、分隔线、空行
+        name = m.group("alias")
+        seen.append(name)
+        if name == alias:                 # 整列相等，不是子串包含
+            return int(m.group("mtu"))
+    raise RuntimeError(
+        f"未在 netsh 输出中找到别名为「{alias}」的网卡；"
+        f"当前枚举到：{seen}")
+
+
+def _fabricate_mtu() -> str:
+    """把主网卡 IP 层 MTU 造到 MTU_CONSTRUCT，模拟"被优化软件改坏了"。
+
+    为什么要构造：本机当前 1492 已经是最优，若目标也是 1492，apply() 会返回
+    SKIPPED，整个闭环就没有可验证的改动。必须先造出一个"该修"的现状。
+    """
+    from core.repair.base import netsh_mtu_set, require_primary
+
+    if _CTX is None:
+        raise RuntimeError("_CTX 未注入")
+    primary = require_primary(_CTX)
+    original = _mtu_now(primary.name)
+    if original == MTU_CONSTRUCT:
+        # 已经是目标态，改到相邻的安全值，避免 apply 直接 SKIP
+        netsh_mtu_set(primary.name, MTU_CONSTRUCT - 40)
+    netsh_mtu_set(primary.name, MTU_CONSTRUCT)
+    now = _mtu_now(primary.name)
+    if now != MTU_CONSTRUCT:
+        raise RuntimeError(f"构造失败：期望 {MTU_CONSTRUCT}，读回 {now}")
+    log(f"     构造：{primary.name} MTU {original} -> {now}")
+    return json.dumps({"alias": primary.name, "mtu": original}, ensure_ascii=False)
+
+
+def _restore_mtu(original_json: str) -> None:
+    from core.repair.base import netsh_mtu_set
+
+    data = json.loads(original_json)
+    netsh_mtu_set(data["alias"], int(data["mtu"]))
+    now = _mtu_now(data["alias"])
+    if now != int(data["mtu"]):
+        raise RuntimeError(
+            f"还原失败：期望 {data['mtu']}，读回 {now}")
+
+
 FABRICATE = {
     "proxy.reset": (_fabricate_proxy, _restore_proxy),
     "firewall.ensure_enabled": (_fabricate_firewall, _restore_firewall),
     "tcp.autotuning": (_fabricate_tcp, _restore_tcp),
     "hosts.clean_bad_lines": (_fabricate_hosts, _restore_hosts),
     "netbios.disable_public": (_fabricate_netbios, _restore_netbios),
+    "mtu.optimize": (_fabricate_mtu, _restore_mtu),
 }
 
 
@@ -298,7 +386,21 @@ def run_one(action_id: str, store: BackupStore, ctx: DiagnosticContext,
         # C. 执行修复
         log("\n  C. 执行修复")
         eng = E.RepairEngine(store=store, dry_run=False)
-        plan = eng.plan([action_id], ctx)
+        # mtu.optimize 是唯一需要参数的动作：它的 target_mtu 必须由调用方给出
+        # （引擎刻意不允许猜默认值，见 mtu_actions.py 顶部注释）。
+        # 闭环里我们用 MTU_FIX_TO 作为"实测出的最优值"，它必须不同于构造态，
+        # 否则 apply() 会返回 SKIPPED、闭环失去可验证的改动。
+        if action_id == "mtu.optimize":
+            ref: object = ("mtu.optimize", {"target_mtu": MTU_FIX_TO})
+        else:
+            ref = action_id
+        # 构造改了系统状态，但 ctx 的网卡缓存还停在构造前。刷新它，
+        # 让备份/执行看到的是"用户此刻的现状"，而不是测试开始时的样子。
+        try:
+            ctx.refresh_adapters()
+        except AttributeError:
+            pass
+        plan = eng.plan([ref], ctx)
         if len(plan) == 0:
             log(f"     [跳过] plan() 未纳入该动作：{plan.notes}")
             outcome["notes"].append("plan 剔除：" + "；".join(plan.notes))
@@ -419,7 +521,9 @@ def main() -> int:
         log("\n[中止] 需要管理员权限。请以管理员身份运行本脚本。")
         return 2
 
+    global _CTX
     ctx = DiagnosticContext()
+    _CTX = ctx
     log(f"\n权限：管理员　主机：{ctx.hostname}")
     primary = ctx.primary
     if primary is not None:

@@ -20,7 +20,7 @@
 
 技术栈：Python 3.12 + PySide6 6.8 + PyInstaller 6.22（onedir）+ Inno Setup 6.7.3。
 
-**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1389 条双语文案 / 140 项测试。
+**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1389 条双语文案 / 148 项测试。
 
 ---
 
@@ -34,11 +34,11 @@ cd D:\Documents\deepseek-harness\default-workspace\lanpulse
 $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe main.py
 
-# 全量测试（140 项，约 1.3 秒）
+# 全量测试（148 项，约 1.4 秒）
 .\.venv\Scripts\python.exe -m pytest tests -q
 
 # 提交前必跑的四道门禁（全部必须 exit=0）
-.\.venv\Scripts\python.exe tools\check_consistency.py    # 18 项交叉校验
+.\.venv\Scripts\python.exe tools\check_consistency.py    # 11 节交叉校验
 .\.venv\Scripts\python.exe tools\audit_i18n.py
 .\.venv\Scripts\python.exe tools\privacy_audit.py
 
@@ -87,7 +87,7 @@ lanpulse/
 │   ├── sysutil.py             提权 / 单实例 / 环境自检
 │   ├── report.py              HTML / JSON / TXT 导出
 │   └── ui/                    PySide6 界面（9 个页面）
-├── tests/                     140 项
+├── tests/                     148 项
 ├── tools/                     开发与运维脚本（见第八节）
 ├── installer/                 Inno Setup 脚本与资源
 ├── site/                      落地页（GitHub Pages 的发布源，自包含）
@@ -172,7 +172,7 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 | 14 项检测 | 全部实现并实测 |
 | 6 个场景 | 已接入 UI，场景过滤生效 |
 | 根因引擎（10 规则） | 已实现，单元测试覆盖 |
-| 15 个修复动作 | 已实现，**10 个**做过真实闭环 |
+| 15 个修复动作 | 已实现，**8 个**做过真实闭环 |
 | 备份回滚 | 已实现，含 ADS 路径修复 |
 | 跨区域自适应 | 12 套剖面，设置页显示识别依据 |
 | 中英双语 | 1389 条，key 集合完全一致 |
@@ -231,18 +231,28 @@ docs/release-notes/
 2. **区域自动识别是启发式的** —— 延迟只能排除「不在中国大陆」，具体区域靠时区 + 语言。
    大陆、香港、澳门共用 `China Standard Time`，港澳完全依赖系统地区码
    （`zh-HK` / `zh-MO`）。跨国专线、海外 VPS 可能判错，设置页可手动固定。
-3. **闭环实测覆盖 10/15 个动作** —— 已测：`dns.set_public`、`dns.flush_cache`、
+3. **闭环实测覆盖 8/15 个动作** —— 已测：`dns.set_public`、`dns.flush_cache`、
    `proxy.reset`、`firewall.ensure_enabled`、`tcp.autotuning`、`hosts.clean_bad_lines`、
-   `netbios.disable_public`（另有 `dns.*` 两项在 v1.1.0 验证）。
-   未测：`tcp.reset_stack`、`adapter.reset_stack`（需重启）、`mtu.optimize`、
+   `netbios.disable_public`、`mtu.optimize`。
+   未测：`tcp.reset_stack`、`adapter.reset_stack`（需重启）、
    `adapter.renew_dhcp`（会断网）、`dns.restore_dhcp`、`hosts.restore_default`、
    `proxy.restore_auto`、`tcp.heuristics`。
+
+   **这个数字有单一来源，不要手写**：`tools/check_consistency.py` 第 [9] 节从
+   `tools/closed_loop_test.py` 的 `TEST_ACTIONS` 与 `tools/closed_loop_v12.py` 的
+   `TARGETS` 反推覆盖集合，与本节的清单逐项比对。此前曾把 7 个实数写成 10 个，
+   因为把 `dns.set_public` / `dns.flush_cache` 在"已测清单"和"另有 dns.* 两项"里
+   各数了一次。**新增闭环动作时改的是脚本，不是这段文字。**
 4. **回滚失败路径未测试** —— 代码有处理，但没有构造过"回滚中途失败"的场景。
 5. **无代码签名** —— SmartScreen 会提示"未知发布者"。
 6. **VPN 网卡不参与优化决策** —— 刻意为之，避免破坏既有 VPN 配置。
-7. **`privacy_audit.py` 阈值刻意宽松** —— 只在严重/高级别返回 1；当前的「中=2 低=24」
-   不阻断 CI。这些命中多为正当数据（RFC 5737 测试地址、公共 DNS 的 IP、第三方
-   翻译文件的维护者邮箱）。**收紧会制造误报，重演"门禁长期红灯被忽略"的老问题。**
+7. **`privacy_audit.py` 阈值刻意宽松** —— 只在严重/高级别返回 1；当前的「中=2、低=75 上下」
+   不阻断 CI。**不要把这个数字写死**：它随文档行数浮动，改一条路径就会 ±1
+   （本次修掉 `update_release_bodies.py` 的硬编码路径后，低就从 76 掉到 75）。
+   要看当前值直接跑脚本读末尾汇总行。
+
+   这些命中多为正当数据（RFC 5737 测试地址、公共 DNS 的 IP、第三方翻译文件的
+   维护者邮箱）。**收紧会制造误报，重演"门禁长期红灯被忽略"的老问题。**
 
 ---
 
@@ -252,8 +262,8 @@ docs/release-notes/
 
 | 层级 | 命令 | 说明 |
 |---|---|---|
-| 单元 | `pytest tests -q` | 140 项，约 1.3 秒 |
-| 一致性 | `tools/check_consistency.py` | 18 项：检测项数/版本/品牌/标题/截图/i18n/链接 |
+| 单元 | `pytest tests -q` | 148 项，约 1.4 秒 |
+| 一致性 | `tools/check_consistency.py` | 11 节交叉校验：数量声明/版本/品牌/数据目录/截图/i18n/链接/站点/闭环覆盖/测试数量/自身规模 |
 | 站点 | `tools/check_site.py` | 资源可达 / 版本一致 / 双语互链 / 无越界引用 |
 | 端到端 | 构建 → 安装 → 启动 → 卸载 | 手动，见下 |
 
@@ -402,6 +412,60 @@ v1.1.0 也有同样缺陷，只是无人察觉。
 加了之后窗口版 exe 崩溃，只报 "Unhandled exception in script"，无堆栈。
 **已在 `build.spec` 注释说明原因**。
 
+### MTU 有两个，读写不能混用（v1.2.2 修正）
+
+`AdapterInfo.mtu` 原先是 `Get-NetAdapter` 的 `MtuSize`（NDIS 链路层），
+而 `netsh interface ipv4 set subinterface mtu=` 读写的是 `NlMtu`（IP 层）。
+**在有封装的链路上两者不相等**（本机以太网 1500 vs 1492），后果是
+verify 永久假失败、回滚把用户配置改成另一个值。
+
+现在：`mtu` = `NlMtu`（**所有修复/检测/备份/回滚都用它**），
+`link_mtu` = `MtuSize`（仅诊断展示）。
+`tests/test_repair_contracts.py::TestMtuSemantics` 锁死这条。
+
+**新增任何读 MTU 的代码，只能读 `.mtu`。** 本机这个差异是天然存在的，
+不需要构造就能复现，改错了会立刻被闭环测试发现。
+
+### 备份前必须刷新网卡缓存，否则备份的是"过去"（v1.2.2 修正）
+
+`DiagnosticContext.adapters` 首次采集后永久缓存（为"一次体检内不重复
+采集"设计）。但修复可能发生在体检几分钟之后，用户中途也可能手动改过配置。
+用这份旧快照备份，回滚就会把系统恢复到**用户早已不处于的状态**，而报告
+仍显示 `rolled_back=True`。
+
+**已修**：`RepairEngine.execute()` 在建会话后、逐项 `backup()` 之前调用
+`ctx.refresh_adapters()`。这条对所有动作生效。
+
+**闭环脚本里也要刷**：构造出故障态之后必须 `ctx.refresh_adapters()`，
+否则动作读到的还是构造前的值。`closed_loop_v12.py` 已加。
+
+### 编辑工具会把整份文件转成 CRLF，污染 diff
+
+仓库基线全是 LF（`.py` / `.md` / `.iss` / `.ps1` 一律）。用部分编辑工具
+（含 IDE、某些 `read-modify-write` 脚本）改文件时，工具可能按 Windows 默认
+把**整份文件**重写成 CRLF。后果不是功能坏了，而是 `git diff` 显示 800+ 行
+变更，真实改动被淹没，评审时根本看不出改了什么。
+
+本仓库没有 `.gitattributes` 兜底，也没有开 `core.autocrlf`，所以这件事
+完全靠改完自查。
+
+**判据**（改完立刻查，别等提交后才发现）：
+
+```bash
+git diff --stat          # 行数应与你实际改的行数同量级
+file tools/xxx.py        # 出现 "CRLF line terminators" 就是中招了
+```
+
+**修复**（转回 LF，不碰内容）：
+
+```python
+import pathlib
+p = pathlib.Path("tools/xxx.py")
+p.write_bytes(p.read_bytes().replace(b"\r\n", b"\n"))
+```
+
+转完 `git diff --stat` 应立刻回落到真实改动量。**提交前必看这一行**。
+
 ### `netsh` 参数非法时返回 0
 
 不能只看退出码判断成功，还要检查输出文本。
@@ -426,9 +490,38 @@ git config --local branch.main.merge refs/heads/main
 
 并清理 Windows 凭据管理器中的 `git:https://github.com`。
 
-**发布用的 token 放在 `.gh_token`**（已被 `.gitignore` 覆盖）。约定是**用完即删**。
-推送时用 `https://x-access-token:<token>@github.com/...` 作为一次性 URL 参数，
-push 完立刻 `remote set-url` 复原。
+**发布用的 token 放在 `.gh_token`**（已被 `.gitignore` 覆盖），格式为下划线
+细粒度 PAT（`github_pat_`，93 字符）。
+
+#### `.gh_token` 的保留策略（2026-11-10 修订）
+
+旧约定是「用完即删」。实测下来这条容易被理解成「每次会话都删」，导致每次
+部署前都要重新签发，反而增加 token 在剪贴板、日志、shell 历史里暴露的机会。
+现在的策略分两半：
+
+| 位置 | 约定 |
+|---|---|
+| **本地 `D:\...\lanpulse\.gh_token`** | **允许长期保留**。它已被 `.gitignore` 覆盖、从未进入过 git 历史，本地留存不构成泄露面 |
+| **GitHub 侧对应 token** | **每次部署完成后必须撤销**。部署结束 = 改动已推送 / Release 已上传 / 站点已更新 |
+
+也就是说：文件留在本地，**凭据在远端作废**。下次部署重新签发一个新 token
+写进同一个文件即可，不需要动任何其它环节。
+
+**部署后必须执行（不要跳过）**：
+
+1. 打开 https://github.com/settings/tokens?type=beta （细粒度 PAT 页）
+2. 找到本次用的 token → **Delete**（不是 "Regenerate"；重新生成等于续命）
+3. 本地 `.gh_token` 保持不动，但把它视为**已失效**，直到下次部署覆盖
+4. `git remote set-url origin https://github.com/Levanll/LanPulse.git` 复原
+   （推送时用的是 `https://x-access-token:<token>@github.com/...` 一次性 URL）
+5. 清理 Windows 凭据管理器中的 `git:https://github.com`
+
+**判据**：部署收尾时 `git ls-remote origin refs/heads/main` 仍能通（走的是
+系统凭据或匿名读），而用旧 token 调 `GET /user` 返回 401 —— 说明远端已作废、
+本地文件残留无害。
+
+**不要把 token 写进任何会被提交的文件**（CHANGELOG、发布说明、脚本常量）。
+`tools/privacy_audit.py` 会拦 `github_pat_` 前缀，但那是最后一道闸，不是第一道。
 
 ### Release 说明改双语时，中文稿的结构不统一
 
@@ -600,7 +693,7 @@ document.elementFromPoint(cx, b.top + 15)   // 必须命中 IMG，不是 DIV.wra
 
 **发布相关脚本**：
 
-- `tools/check_consistency.py` —— 18 项交叉校验，改文档/版本后必跑
+- `tools/check_consistency.py` —— 11 节交叉校验，改文档/版本后必跑
 - `tools/repo_about.py` + `tools/apply_repo_about.py` —— 生成并应用双语 About 与 topics
 - `tools/update_release_bodies.py` —— 发布说明中英合并与推送（`merge` 子命令只生成不推送）
 - `tools/publish_github.py` / `tools/final_publish.py` —— 版本号均从 branding 读（切勿改回硬编码）
@@ -608,7 +701,8 @@ document.elementFromPoint(cx, b.top + 15)   // 必须命中 IMG，不是 DIV.wra
 **账号与凭据**：
 
 - 组织/账号：`Levanll`
-- 发布 token 走 `.gh_token`，**用完即删**；每次约定的清理清单见第七节末
-- 撤销入口：https://github.com/settings/tokens
+- 发布 token 走 `.gh_token`：**本地可长期保留，每次部署后必须在 GitHub 撤销**
+  （细粒度 PAT 页 → Delete）。完整清单见第七节「`.gh_token` 的保留策略」
+- 撤销入口：https://github.com/settings/tokens?type=beta
 
 参考项目（借鉴设计思路，未复制代码）：https://github.com/silentcrow09/netpulse

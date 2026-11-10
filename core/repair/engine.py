@@ -331,6 +331,18 @@ class RepairEngine:
         report.session_path = session.path
 
         # --- 2) 全部备份，任一失败即中止 --------------------------------
+        # 备份前强制刷新网卡快照：备份的语义是"记录被修改那一刻的真实状态"。
+        # ctx 的网卡缓存可能来自几分钟前的体检，用它备份会让回滚回到一个
+        # 用户早已不处于的过去（mtu.optimize 的首次闭环实测就撞上了这一点）。
+        #
+        # 这里只容忍"没有这个方法"这一种情况，用 getattr 探测而不是
+        # try/except AttributeError：后者会把 refresh_adapters() **内部**
+        # 抛出的 AttributeError（例如采集链路里写错属性名）一起静默吞掉，
+        # 备份便继续用陈旧快照，正好把这条不变量悄悄退回原状。
+        refresh = getattr(ctx, "refresh_adapters", None)
+        if refresh is not None:
+            refresh()
+
         for index, action_id in enumerate(actions):
             self._emit(progress, index, total, action_id, "backup")
             try:

@@ -47,6 +47,22 @@ class DiagnosticContext:
                 self._adapters = pw.collect_adapters()
             return self._adapters
 
+    def refresh_adapters(self) -> list[pw.AdapterInfo]:
+        """强制重新采集网卡状态，丢弃缓存。
+
+        为什么修复链路必须在备份前调用它：这个缓存是为"一次体检内不重复采集"
+        设计的，而体检可能已经过去几分钟、甚至用户中途手动改过配置。
+        备份的语义是"记录**被修改的那一刻**的真实状态"，拿体检时的旧快照去
+        备份，回滚就会回到一个用户早已不处于的过去。
+
+        真实事故（2026-11-10 闭环实测暴露）：mtu.optimize 的 backup() 读到
+        缓存里的 1492，而实际已是 1400（被前一步构造改动），回滚便"恢复"到
+        1492 —— 既不是用户原值，也不是被修的值，属于凭空写了一笔。
+        """
+        with self._lock:
+            self._adapters = pw.collect_adapters()
+            return self._adapters
+
     @property
     def primary(self) -> pw.AdapterInfo | None:
         return pw.primary_adapter(self.adapters)

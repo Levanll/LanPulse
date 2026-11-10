@@ -332,7 +332,7 @@ LanPulse/
 │   ├── settings.py        设置持久化
 │   └── i18n.py            运行时语言切换
 ├── app/
-│   ├── ui/                主题、自绘控件、7 个页面
+│   ├── ui/                主题、自绘控件、9 个页面
 │   ├── report.py          HTML / JSON / TXT 报告导出
 │   ├── sysutil.py         提权 / 单实例 / 环境自检
 │   ├── i18n_zh.py / i18n_en.py

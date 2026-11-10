@@ -5,6 +5,36 @@
 
 ## [Unreleased]
 
+### 修复
+
+**MTU 读的是链路层值，写的是 IP 层值（高危）**
+
+`AdapterInfo.mtu` 原先取 `Get-NetAdapter` 的 `MtuSize`（NDIS 链路层），
+而 `netsh interface ipv4 set subinterface mtu=` 读写的是 `NlMtu`（IP 层）。
+有封装的链路上两者并不相等（本机以太网 1500 vs 1492），导致：verify 拿
+写入值去比读回的另一个值，永久且静默地失败；备份记录错误原值，回滚反而把
+用户配置改成另一个数；SKIP 判定失真，真该修时可能判成"已是最优"。
+
+现在 `AdapterInfo.mtu` 取 `NlMtu`，`MtuSize` 另存为 `link_mtu` 仅供展示。
+新增 `TestMtuSemantics` 三条用例锁死该语义。
+
+**备份读到的是体检时的陈旧网卡快照（高危）**
+
+`DiagnosticContext.adapters` 首次采集后永久缓存，而修复可能发生在体检之后
+数分钟。用旧快照备份，回滚会把系统恢复到用户早已不处于的状态，报告却仍显示
+`rolled_back=True`。
+
+现在 `RepairEngine.execute()` 在逐项备份前调用 `ctx.refresh_adapters()`，
+对所有动作生效。这两个缺陷都是在补测 `mtu.optimize` 的闭环中当场暴露的。
+
+### 新增
+
+**`mtu.optimize` 真实闭环实测（8/15）**
+
+单独脚本 `tools/closed_loop_mtu.py`，复用 `closed_loop_v12.run_one` 的判决
+逻辑而不复制第二份。构造 MTU 1400 → 修复到 1472 → 回滚回 1400（零差异）→
+复原回 1492（与原始态零差异），**通过**。本机测试后 MTU 已回到原值。
+
 ### 新增
 
 **项目落地页（GitHub Pages）**
