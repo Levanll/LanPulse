@@ -1,15 +1,23 @@
 name: Release
 
-# 触发：推送 v* 标签（如 v1.0.0）
-# 产物：安装包 + 绿色包，上传到对应的 GitHub Release
+# 触发：**仅手动** workflow_dispatch，传入 tag。
+#
+# 为什么不再用 push: tags 自动触发（v1.2.2 之后改）：
+#   本地也有一套发布流程（scripts/build_installer.ps1 + 手工建 Release），
+#   而 push tag 会同时触发这里，两边都去创建 Release 并上传同名资产。
+#   v1.2.2 发布时实际撞上了：推 tag 后本工作流已跑到"编译安装包"，
+#   为了不与本地产物互相覆盖，只能人工 cancel 掉——于是该 commit 在仓库
+#   页面上挂了一个 cancelled（显示为失败）的检查标记，看起来像构建坏了，
+#   实际是四道门禁全过、只是被打断。
+#   发布是低频、需要人来判断的动作，不该因为"推了个 tag"就自动跑一遍
+#   完整的构建 + 上传。改成手动触发后，tag 只表示版本标记，发布由人决定。
+#
+# 用法：Actions → Release → Run workflow → 填 tag（如 v1.2.2）
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
       tag:
-        description: "要发布的 tag（如 v1.0.0）"
+        description: "要发布的 tag（如 v1.2.2）；必须已存在"
         required: true
 
 permissions:
@@ -23,6 +31,11 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          # 必须显式指定 tag：手动触发时 github.ref 是默认分支（main），
+          # 不指定就会检出 main 而不是要发布的那个版本，产物与 tag 对不上。
+          # 用 events/inputs 的 tag 而不是 ref_name——ref_name 此时是 "main"。
+          ref: ${{ github.event.inputs.tag }}
 
       - name: 安装 Python
         uses: actions/setup-python@v5
@@ -149,8 +162,15 @@ jobs:
         # 官方要求升级到 v3（Node 24）。
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          # 只剩手动触发这一条路径，直接用输入值；不再保留 ref_name 兜底——
+          # 手动触发时 ref_name 是 "main"，兜底会在这里悄悄建出一个名为
+          # "main" 的 Release，属于比失败更糟的静默错误。
+          tag_name: ${{ github.event.inputs.tag }}
           name: LanPulse ${{ steps.ver.outputs.version }}
+          # body 用整份 CHANGELOG 是权宜之计：真正的发布说明是
+          # docs/release-notes/<tag>.merged.md（中英对照），由
+          # tools/update_release_bodies.py 推送。CI 建的 Release 之后必须
+          # 再跑一次那个脚本，否则格式与另外几个版本不一致。
           body_path: CHANGELOG.md
           draft: false
           prerelease: false

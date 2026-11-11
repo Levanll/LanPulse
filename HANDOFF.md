@@ -1,8 +1,8 @@
 # 交接文档（HANDOFF）
 
 > 面向：接手继续开发的新会话
-> 更新时间：2026-11-10
-> 当前版本：LanPulse v1.2.1（已发布）
+> 更新时间：2026-11-11
+> 当前版本：LanPulse v1.2.2（已发布）
 > 仓库：https://github.com/Levanll/LanPulse
 > 工作目录：`D:\Documents\deepseek-harness\default-workspace\lanpulse`
 
@@ -49,6 +49,16 @@ $env:PYTHONPATH="."
 # 完整构建（PyInstaller + Inno Setup，产出 release\）
 powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 ```
+
+**发版流程（v1.2.2 起按这个顺序）**：
+
+1. 改版本号 → 构建 → 跑四道门禁（版本号改了必须过 [2] 与 [8] 节）
+2. commit + **push main**；再打 tag 并 push
+3. **用本地产物手工建 Release**，上传 `release\` 下的三个文件
+   （`release.yml` 已是手动触发，推 tag 不再自动跑，见第七节）
+4. 跑 `tools\update_release_bodies.py` 把 body 换成中英对照的
+   `docs/release-notes/<tag>.merged.md`（CI 建 Release 时 body 是整份 CHANGELOG）
+5. Pages 由 `pages.yml` 在推送 `site/**` 后自动部署，发完必须验证线上版本号
 
 **环境事实**：
 
@@ -178,13 +188,13 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 | 中英双语 | 1389 条，key 集合完全一致 |
 | 报告导出 | HTML / JSON / TXT |
 | CI + Release 工作流 | 四道门禁已强制，失败即阻断发布 |
-| GitHub 发布 | v1.1.0 / v1.2.0 / v1.2.1 均已发布 |
+| GitHub 发布 | v1.1.0 / v1.2.0 / v1.2.1 / v1.2.2 均已发布 |
 
 ### 仓库
 
 - 地址：https://github.com/Levanll/LanPulse
 - 分支：`main`（历史已重写为干净起点）
-- 最新 Release：`v1.2.1`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
+- 最新 Release：`v1.2.2`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
 - 数据目录：`%LOCALAPPDATA%\LanPulse`
 - Packages：**有意保持为空**（本项目为 Windows exe，GitHub Packages 的 registry 均不匹配）
 - 落地页：https://levanll.github.io/LanPulse/ （源在 `site/`，双语互链）
@@ -208,9 +218,9 @@ git ls-remote origin refs/heads/main     # 与本地 HEAD 一致
 
 ```
 docs/release-notes/
-├── v1.2.1.md           中文
-├── v1.2.1.en.md        英文
-└── v1.2.1.merged.md    合并稿（实际推送到 GitHub 的内容）
+├── v1.2.2.md           中文
+├── v1.2.2.en.md        英文
+└── v1.2.2.merged.md    合并稿（实际推送到 GitHub 的内容）
 ```
 
 改发布说明**不要**去网页上直接编辑，改源稿再重推：
@@ -275,7 +285,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 
 # 2. 静默安装到临时目录
 $tmp = "$env:TEMP\lp_test"
-Start-Process release\LanPulse-1.2.1-Setup.exe `
+Start-Process release\LanPulse-1.2.2-Setup.exe `
   -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=`"$tmp`"" -Wait
 
 # 3. 启动，确认无崩溃、窗口标题为「LanPulse - 网络体检与一键修复」
@@ -350,6 +360,28 @@ platform_win as pw`。单元测试不执行动作、`dry_run` 也不走 `apply()
 `ActionMeta` 每加一个字段，这里不同步就会静默丢失——表现为「警告中文有、英文没有」。
 
 **加字段时必须同步这里**，`test_repair_contracts.py` 里有回归用例。
+
+### push tag 会自动触发 Release，与本地发布互相打架（v1.2.2 撞上）
+
+`release.yml` 原来的触发器是 `on: push: tags: v*`。发 v1.2.2 时本地
+流程也在建 Release，推 tag 后 CI 同时启动——**两边都去创建 Release 并上传
+同名资产**（`overwrite_files: true` 会让后跑的覆盖先跑的）。
+
+当时的处置是人工 `cancel` 那次 run。它已经跑完四道门禁、正在编译安装包，
+于是这个 commit 在仓库页面上挂了一个 **cancelled 的检查标记，显示为失败**。
+看起来像构建坏了，实际是被人打断的。**这种"红叉"会误导下一个人排查半天。**
+
+**已改成只保留 `workflow_dispatch`**。发布是低频且需要人判断的动作，不该
+因为推了个 tag 就自动跑一遍完整构建 + 上传。连带的两个必改点：
+
+- `actions/checkout` 必须显式 `ref: ${{ github.event.inputs.tag }}`。
+  手动触发时 `github.ref` 是默认分支，不指明就会检出 main，产物与 tag 对不上。
+- `tag_name` 去掉了 `|| github.ref_name` 兜底。手动触发时 `ref_name` 是
+  `"main"`，兜底会在出错时静默建出一个名为 main 的 Release——比失败更糟。
+
+**如果哪天又看到 commit 上有 cancelled/失败标记**，先看是不是 Release 工作流：
+点进 Actions → 看是哪一步。门禁步骤若都是 success，那就是发布流程被打断，
+不影响代码质量。
 
 ### Release 工作流把注释行当版本号
 
@@ -534,7 +566,7 @@ v1.1.0 的中文稿直接从「首个公开版本。」开头，缺 `## 本次�
 两版的 `#` 标题数量一致。核对方法：
 
 ```powershell
-.\.venv\Scripts\python.exe -c "import pathlib; [print(t, sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#')), sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.en.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#'))) for t in ('v1.1.0','v1.2.0','v1.2.1')]"
+.\.venv\Scripts\python.exe -c "import pathlib; [print(t, sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#')), sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.en.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#'))) for t in ('v1.1.0','v1.2.0','v1.2.1','v1.2.2')]"
 ```
 
 ### Release body 里的「1.0.0」不一定是描述错误
