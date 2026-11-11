@@ -31,7 +31,7 @@ API = "https://api.github.com"
 OWNER = "Levanll"
 REPO = "LanPulse"
 BODIES = ROOT / "docs" / "release-notes"
-TAGS = ("v1.1.0", "v1.2.0", "v1.2.1")
+TAGS = ("v1.1.0", "v1.2.0", "v1.2.1", "v1.2.2")
 
 
 def token() -> str:

@@ -3,7 +3,7 @@
 本文件格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [Unreleased]
+## [1.2.2] - 2026-11-11
 
 ### 修复
 
@@ -57,7 +57,7 @@
 ### 变更
 
 - `check_consistency.py` 新增第 [8] 节：站点版本号与 `branding.VERSION` 一致、
-  站点截图与 `docs/images` 逐字节一致。共 20 项检查
+  站点截图与 `docs/images` 逐字节一致
 - `.github/workflows/pages.yml` —— 推送 `site/**` 或 `docs/images/**` 时自动部署
 
 ### 清理
@@ -68,7 +68,7 @@
 - `tools/fix_ui_i18n.py` —— v1.1.0 的 UI 骨架文案收尾脚本
 - `tools/prepare_github.py` —— 已被 `publish_github.py` 取代
 
-`tools/` 从 25 个文件降到 22 个。
+这三个脚本已完成使命，不再入库。
 
 ## [1.2.1] - 2026-11-08
 
