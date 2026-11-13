@@ -2,7 +2,7 @@
 
 > 面向：接手继续开发的新会话
 > 更新时间：2026-11-11
-> 当前版本：LanPulse v1.2.2（已发布）
+> 当前版本：LanPulse v1.3.0（已发布）
 > 仓库：https://github.com/Levanll/LanPulse
 > 工作目录：`D:\Documents\deepseek-harness\default-workspace\lanpulse`
 
@@ -52,7 +52,8 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 
 **发版流程（v1.2.2 起按这个顺序）**：
 
-1. 改版本号 → 构建 → 跑四道门禁（版本号改了必须过 [2] 与 [8] 节）
+1. 改版本号 → **同步 `site/latest.json`** → 构建 → 跑四道门禁
+   （版本号改了必须过 [2]、[8]、[11] 节；[11] 专查清单同步）
 2. commit + **push main**；再打 tag 并 push
 3. **用本地产物手工建 Release**，上传 `release\` 下的三个文件
    （`release.yml` 已是手动触发，推 tag 不再自动跑，见第七节）
@@ -213,13 +214,13 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 | 中英双语 | 1401 条，key 集合完全一致 |
 | 报告导出 | HTML / JSON / TXT |
 | CI + Release 工作流 | 四道门禁已强制，失败即阻断发布 |
-| GitHub 发布 | v1.1.0 / v1.2.0 / v1.2.1 / v1.2.2 均已发布 |
+| GitHub 发布 | v1.1.0 / v1.2.0 / v1.2.1 / v1.2.2 / v1.3.0 均已发布 |
 
 ### 仓库
 
 - 地址：https://github.com/Levanll/LanPulse
 - 分支：`main`（历史已重写为干净起点）
-- 最新 Release：`v1.2.2`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
+- 最新 Release：`v1.3.0`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
 - 数据目录：`%LOCALAPPDATA%\LanPulse`
 - Packages：**有意保持为空**（本项目为 Windows exe，GitHub Packages 的 registry 均不匹配）
 - 落地页：https://levanll.github.io/LanPulse/ （源在 `site/`，双语互链）
@@ -243,9 +244,9 @@ git ls-remote origin refs/heads/main     # 与本地 HEAD 一致
 
 ```
 docs/release-notes/
-├── v1.2.2.md           中文
-├── v1.2.2.en.md        英文
-└── v1.2.2.merged.md    合并稿（实际推送到 GitHub 的内容）
+├── v1.3.0.md           中文
+├── v1.3.0.en.md        英文
+└── v1.3.0.merged.md    合并稿（实际推送到 GitHub 的内容）
 ```
 
 改发布说明**不要**去网页上直接编辑，改源稿再重推：
@@ -310,7 +311,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 
 # 2. 静默安装到临时目录
 $tmp = "$env:TEMP\lp_test"
-Start-Process release\LanPulse-1.2.2-Setup.exe `
+Start-Process release\LanPulse-1.3.0-Setup.exe `
   -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=`"$tmp`"" -Wait
 
 # 3. 启动，确认无崩溃、窗口标题为「LanPulse - 网络体检与一键修复」
@@ -612,7 +613,7 @@ v1.1.0 的中文稿直接从「首个公开版本。」开头，缺 `## 本次�
 两版的 `#` 标题数量一致。核对方法：
 
 ```powershell
-.\.venv\Scripts\python.exe -c "import pathlib; [print(t, sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#')), sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.en.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#'))) for t in ('v1.1.0','v1.2.0','v1.2.1','v1.2.2')]"
+.\.venv\Scripts\python.exe -c "import pathlib; [print(t, sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#')), sum(1 for l in (pathlib.Path(f'docs/release-notes/{t}.en.md').read_text(encoding='utf-8')).splitlines() if l.startswith('#'))) for t in ('v1.1.0','v1.2.0','v1.2.1','v1.2.2','v1.3.0')]"
 ```
 
 ### Release body 里的「1.0.0」不一定是描述错误
