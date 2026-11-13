@@ -60,10 +60,11 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 1. 改版本号 → **同步 `site/latest.json`** → 构建 → 跑四道门禁
    （版本号改了必须过 [2]、[8]、[11] 节；[11] 专查清单同步）
 2. commit + **push main**；再打 tag 并 push
-3. **用本地产物手工建 Release**，上传 `release\` 下的三个文件
-   （`release.yml` 已是手动触发，推 tag 不再自动跑，见第七节）
-4. 跑 `tools\update_release_bodies.py` 把 body 换成中英对照的
-   `docs/release-notes/<tag>.merged.md`（CI 建 Release 时 body 是整份 CHANGELOG）
+3. **用本地产物手工建 Release**：`python tools\create_release.py <tag>`
+   它会读 `docs/release-notes/<tag>.merged.md` 作为 body、上传 `release\`
+   下的三个文件，并校验中英对照结构（`release.yml` 已是手动触发，见第七节）
+4. 发完核对线上：站点版本号、`site/latest.json`、三个下载链接
+   （Pages 由 `pages.yml` 在推送 `site/**` 后自动部署）
 5. Pages 由 `pages.yml` 在推送 `site/**` 后自动部署，发完必须验证线上版本号
 
 **环境事实**：
