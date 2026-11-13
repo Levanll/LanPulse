@@ -23,7 +23,7 @@
 
 LanPulse is a Windows network diagnostic and repair tool. It scans your machine the moment you open it, runs 14 checks, and hands you a 0-100 health score with a one-line verdict. Whatever is broken, it lists the concrete repair actions — and **every change is backed up first, read back and verified after, and reversible at any time**.
 
-Three things separate it from the usual "one-click fix my network" utilities: **it knows where on Earth it is running** (twelve built-in profiles — mainland China, Hong Kong, Macau, Taiwan, Japan, Korea, Singapore, India, Australia, North America, Europe and a catch-all — so it never judges a European connection by whether `baidu.com` resolves), **every system change can be rolled back** (backups are plain text and `.reg` files you can restore by hand even if the app itself breaks), and **nothing ever leaves your machine** (no telemetry, no accounts, no cloud).
+Three things separate it from the usual "one-click fix my network" utilities: **it knows where on Earth it is running** (twelve built-in profiles — mainland China, Hong Kong, Macau, Taiwan, Japan, Korea, Singapore, India, Australia, North America, Europe and a catch-all — so it never judges a European connection by whether `baidu.com` resolves), **every system change can be rolled back** (backups are plain text and `.reg` files you can restore by hand even if the app itself breaks), and **nothing ever leaves your machine** (no telemetry, no accounts, no cloud; the only optional outbound request is a version-file check, off by default).
 
 ## Why it's different
 
@@ -45,8 +45,8 @@ Grab one of these from [Releases](https://github.com/Levanll/LanPulse/releases/l
 
 | Artifact | Use it if |
 |---|---|
-| `LanPulse-1.2.2-Setup.exe` | You want a normal install with a Start-menu shortcut |
-| `LanPulse-1.2.2-win64-portable.zip` | You want the portable build — unzip and run, no registry writes |
+| `LanPulse-1.3.0-Setup.exe` | You want a normal install with a Start-menu shortcut |
+| `LanPulse-1.3.0-win64-portable.zip` | You want the portable build — unzip and run, no registry writes |
 
 > **First launch will trip SmartScreen ("Windows protected your PC").** Click **More info → Run anyway**. Current builds are unsigned; that is all it means.
 
@@ -437,6 +437,8 @@ Check [existing issues](https://github.com/Levanll/LanPulse/issues) first. Attac
 | Question | Answer |
 |---|---|
 | Does it upload anything? | **No.** There is no upload code path — no telemetry, no accounts, no sync |
+| Does it phone home? | Two cases. **Checkup**: DNS queries and ICMP/TCP probes. **Update check**: only after you enable it, a GET for a version file (`latest.json`). Neither carries any machine information — no account, no device ID, no usage stats |
+| What does the update check leak? | The request carries only a fixed `User-Agent: LanPulse/<version>`. Any HTTPS request lets the server see your IP; that is transport reality, not data this app collects. Off by default |
 | Does it use the network? | Only diagnostic DNS queries and ICMP/TCP probes, used to time resolution and reachability. They carry no machine information. Verify with a packet capture |
 | Does the report contain personal data? | Only your network configuration (adapter names, IPs, DNS, MTU…) and check results. It includes the hostname — **review before sharing** |
 | Where does data live? | All under `%LOCALAPPDATA%\LanPulse\`: `backups\`, `logs\app.log`, `logs\audit.jsonl`, `settings.json` |

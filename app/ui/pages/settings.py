@@ -123,6 +123,11 @@ class SettingsPage(QWidget):
         self.row_probe = SettingRow("", "", self.chk_probe)
         scan.addWidget(self.row_probe)
 
+        self.chk_update = QCheckBox()
+        self.chk_update.toggled.connect(self._on_update_check)
+        self.row_update = SettingRow("", "", self.chk_update)
+        scan.addWidget(self.row_update)
+
         self.timeout_spin = QDoubleSpinBox()
         self.timeout_spin.setRange(0.5, 4.0)
         self.timeout_spin.setSingleStep(0.5)
@@ -247,6 +252,15 @@ class SettingsPage(QWidget):
         self._set("allow_network_probe", bool(value))
         # 关闭联网探测时，超时设置失去意义
         self.timeout_spin.setEnabled(bool(value))
+        # 更新检查同样依赖外网。关闭探测后它必须一起被禁用并关掉，
+        # 否则会出现"用户关了联网探测，软件仍在发请求"——正是产品
+        # 承诺要杜绝的那种事。
+        self.chk_update.setEnabled(bool(value))
+        if not value and self.chk_update.isChecked():
+            self.chk_update.setChecked(False)
+
+    def _on_update_check(self, value: bool) -> None:
+        self._set("check_updates", bool(value))
 
     # ------------------------------------------------------------------ #
     def _sync_from_settings(self) -> None:
@@ -254,6 +268,8 @@ class SettingsPage(QWidget):
         self._select_data(self.region_combo, self.settings.get("region", region_mod.REGION_AUTO))
         self.chk_autoscan.setChecked(self.settings.get_bool("auto_scan_on_start"))
         self.chk_probe.setChecked(self.settings.get_bool("allow_network_probe"))
+        self.chk_update.setChecked(self.settings.get_bool("check_updates"))
+        self.chk_update.setEnabled(self.settings.get_bool("allow_network_probe"))
         self.timeout_spin.setValue(self.settings.get_float("timeout_scale"))
         self.timeout_spin.setEnabled(self.settings.get_bool("allow_network_probe"))
         self.keep_spin.setValue(self.settings.get_int("backup_keep"))
@@ -358,6 +374,7 @@ class SettingsPage(QWidget):
         self.row_region.retranslate(t("settings.region.title"), t("settings.region.desc"))
         self.row_autoscan.retranslate(t("settings.autoscan.title"), t("settings.autoscan.desc"))
         self.row_probe.retranslate(t("settings.probe.title"), t("settings.probe.desc"))
+        self.row_update.retranslate(t("settings.update.title"), t("settings.update.desc"))
         self.row_timeout.retranslate(t("settings.timeout.title"), t("settings.timeout.desc"))
         self.row_keep.retranslate(t("settings.backupkeep.title"), t("settings.backupkeep.desc"))
         self.row_highrisk.retranslate(

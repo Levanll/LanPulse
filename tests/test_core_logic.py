@@ -330,3 +330,147 @@ class TestActionRegistry:
         for key, meta in ACTIONS.items():
             if meta.risk is RiskLevel.HIGH:
                 assert meta.default_selected is False, f"{key} high-risk must not default"
+
+# --------------------------------------------------------------------------- #
+# 更新检测
+# --------------------------------------------------------------------------- #
+class TestUpdateVersionCompare:
+    """版本比较必须按数字分段，不能按字符串。
+
+    字符串比较下 "1.10.0" < "1.9.0" —— 那会让新版本判成旧版本，
+    用户永远收不到更新提醒，而且不会有任何报错。这类缺陷只能靠测试锁住。
+    """
+
+    def test_dotted_compare(self):
+        from core.update import is_newer
+
+        assert is_newer("1.10.0", "1.9.0") is True
+        assert is_newer("1.2.10", "1.2.9") is True
+        assert is_newer("2.0.0", "1.99.99") is True
+
+    def test_equal_and_older(self):
+        from core.update import is_newer
+
+        assert is_newer("1.2.2", "1.2.2") is False
+        assert is_newer("1.2.1", "1.2.2") is False
+
+    def test_v_prefix_and_garbage(self):
+        from core.update import is_newer, version_tuple
+
+        assert version_tuple("v1.2.3") == (1, 2, 3)
+        # 非法输入宁可漏报，不可误报
+        assert is_newer("abc", "1.2.2") is False
+        assert is_newer("1.2.3", "not-a-version") is False
+
+
+class TestUpdateManifest:
+    def test_valid(self):
+        from core.update import parse_manifest
+
+        info = parse_manifest(json.dumps({
+            "version": "1.3.0", "url": "https://example.com/x",
+            "notes_zh": "中文", "notes_en": "English", "mandatory": False,
+        }))
+        assert info is not None
+        assert info.version == "1.3.0"
+        assert info.notes("zh") == "中文"
+        assert info.notes("en") == "English"
+
+    def test_notes_fallback(self):
+        from core.update import parse_manifest
+
+        info = parse_manifest('{"version":"1.3.0","url":"https://e.com","notes_zh":"只中文"}')
+        assert info is not None
+        # 英文缺失时回退中文，而不是显示空白
+        assert info.notes("en") == "只中文"
+
+    def test_rejects_http_url(self):
+        """更新提示会把用户带去下载页，http 等于允许中间人替换页面。"""
+        from core.update import parse_manifest
+
+        assert parse_manifest('{"version":"1.3.0","url":"http://e.com"}') is None
+
+    def test_rejects_malformed(self):
+        from core.update import parse_manifest
+
+        for bad in ("", "not json", "[]", '{"version":"1.3.0"}',
+                    '{"url":"https://e.com"}', '{"version":"x.y","url":"https://e.com"}'):
+            assert parse_manifest(bad) is None, bad
+
+
+class TestUpdateFailureIsSilent:
+    """更新检测的任何失败都必须返回 None，绝不抛异常。
+
+    这是网络诊断工具：它自己联网失败时弹错误框是荒谬的，而且会打断体检。
+    """
+
+    def test_network_error_returns_none(self):
+        from core.update import check_for_update
+
+        def boom(url, *, timeout, current_version):
+            raise OSError("network down")
+
+        assert check_for_update("1.2.2", fetch=boom) is None
+
+    def test_bad_payload_returns_none(self):
+        from core.update import check_for_update
+
+        assert check_for_update("1.2.2", fetch=lambda u, **k: "<html>404</html>") is None
+        assert check_for_update("1.2.2", fetch=lambda u, **k: "") is None
+
+    def test_same_version_is_not_an_update(self):
+        from core.update import check_for_update
+
+        payload = '{"version":"1.2.2","url":"https://e.com/x"}'
+        assert check_for_update("1.2.2", fetch=lambda u, **k: payload) is None
+
+    def test_newer_version_detected(self):
+        from core.update import check_for_update
+
+        payload = '{"version":"1.2.3","url":"https://e.com/x"}'
+        info = check_for_update("1.2.2", fetch=lambda u, **k: payload)
+        assert info is not None and info.version == "1.2.3"
+
+
+class TestUpdatePrivacyBoundary:
+    """更新检查的请求形态是被写进文档的承诺，这里锁住它。"""
+
+    def test_request_has_no_query_or_identity(self):
+        import inspect
+
+        from core import update
+
+        src = inspect.getsource(update._http_get)
+        # 必须剥掉注释与 docstring 再断言：函数文档里正写着
+        # "不要加主机名/用户名/GUID" 这类禁止性说明，直接搜源码会命中说明本身。
+        # （门禁里"注释被当成一节"、测试里"注释被当成代码"，是同一类错误。）
+        code_lines = []
+        in_doc = False
+        for line in src.splitlines():
+            stripped = line.strip()
+            if stripped.count('"""') % 2 == 1:
+                in_doc = not in_doc
+                continue
+            if in_doc or stripped.startswith("#"):
+                continue
+            code_lines.append(line.split("#", 1)[0])
+        code = "\n".join(code_lines)
+
+        # 不接受调用方拼查询串
+        assert "url +" not in code and "?" not in code
+        # 请求头里不得出现身份字段
+        for banned in ("hostname", "username", "machine", "guid", "token", "email"):
+            assert banned not in code.lower(), banned
+
+    def test_updater_url_is_https(self):
+        from core.update import UPDATER_URL
+
+        assert UPDATER_URL.startswith("https://")
+        assert UPDATER_URL.endswith("latest.json")
+
+    def test_default_is_off(self):
+        """默认关闭是产品承诺的一部分，不能被悄悄改成默认开启。"""
+        from core.settings import DEFAULTS
+
+        assert DEFAULTS["check_updates"] is False
+        assert DEFAULTS["update_prompt_seen"] is False

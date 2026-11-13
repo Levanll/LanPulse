@@ -20,7 +20,7 @@
 
 技术栈：Python 3.12 + PySide6 6.8 + PyInstaller 6.22（onedir）+ Inno Setup 6.7.3。
 
-**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1389 条双语文案 / 148 项测试。
+**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1401 条双语文案 / 162 项测试。
 
 ---
 
@@ -34,11 +34,11 @@ cd D:\Documents\deepseek-harness\default-workspace\lanpulse
 $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe main.py
 
-# 全量测试（148 项，约 1.4 秒）
+# 全量测试（162 项，约 1.5 秒）
 .\.venv\Scripts\python.exe -m pytest tests -q
 
 # 提交前必跑的四道门禁（全部必须 exit=0）
-.\.venv\Scripts\python.exe tools\check_consistency.py    # 11 节交叉校验
+.\.venv\Scripts\python.exe tools\check_consistency.py    # 12 节交叉校验
 .\.venv\Scripts\python.exe tools\audit_i18n.py
 .\.venv\Scripts\python.exe tools\privacy_audit.py
 
@@ -89,15 +89,16 @@ lanpulse/
 │   ├── region.py              12 套区域探测剖面
 │   ├── i18n.py / i18n_args.py 文案与占位符解析
 │   ├── settings.py            设置持久化
+│   ├── update.py              更新检测（可选、默认关闭、失败静默）
 │   ├── action_ids.py          15 个动作的元数据（含 needs_restart）
 │   ├── checks/                14 个检测单元（各自独立可测）
 │   └── repair/                修复引擎 + 15 个原子动作 + 回滚分派
 ├── app/
-│   ├── i18n_zh.py / i18n_en.py 1389 条文案，两语言 key 必须完全一致
+│   ├── i18n_zh.py / i18n_en.py 1401 条文案，两语言 key 必须完全一致
 │   ├── sysutil.py             提权 / 单实例 / 环境自检
 │   ├── report.py              HTML / JSON / TXT 导出
 │   └── ui/                    PySide6 界面（9 个页面）
-├── tests/                     148 项
+├── tests/                     162 项
 ├── tools/                     开发与运维脚本（见第八节）
 ├── installer/                 Inno Setup 脚本与资源
 ├── site/                      落地页（GitHub Pages 的发布源，自包含）
@@ -173,6 +174,30 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 
 ---
 
+### 9. 更新检测：默认关闭，只读版本号文件
+
+这是唯一一个"用户能感知到软件在往外发东西"的功能，因此有三条硬约束：
+
+**默认关闭 + 首次询问**。产品的对外承诺是零上传，开启联网查版本必须由用户
+知情同意。问一次，选了就记住，不再重复骚扰（`update_prompt_seen`）。
+
+**请求形态被测试锁死**。只有 `GET https://levanll.github.io/LanPulse/latest.json`，
+请求头仅 `User-Agent: LanPulse/<版本号>` 与 `Accept`。不含账号、设备标识、
+安装 ID、主机名、用户名。`TestUpdatePrivacyBoundary` 会断言这些字段不出现。
+
+**失败必须静默**。这是网络诊断工具，它自己联网失败时弹错误框是荒谬的。
+`check_for_update()` 不抛异常，超时/404/JSON 坏一律返回 `None`。
+
+**不做自动升级**。只提示 + 打开浏览器。当前无代码签名，静默替换可执行文件
+等于给用户装一个来路不明的程序。
+
+另外两条连带约束：
+
+- **必须复用 `allow_network_probe`**：用户关掉联网探测后，更新检查也得停。
+  这是同一条隐私边界，不能因为是另一个功能就绕开。
+- **`site/latest.json` 与 `branding.VERSION` 必须同步**：门禁第 [11] 节校验。
+  发版时忘了更新清单，用户会永远收到指向旧版的"有新版本"提示，且不报错。
+
 ## 五、当前状态
 
 ### 已完成
@@ -185,7 +210,7 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 | 15 个修复动作 | 已实现，**8 个**做过真实闭环 |
 | 备份回滚 | 已实现，含 ADS 路径修复 |
 | 跨区域自适应 | 12 套剖面，设置页显示识别依据 |
-| 中英双语 | 1389 条，key 集合完全一致 |
+| 中英双语 | 1401 条，key 集合完全一致 |
 | 报告导出 | HTML / JSON / TXT |
 | CI + Release 工作流 | 四道门禁已强制，失败即阻断发布 |
 | GitHub 发布 | v1.1.0 / v1.2.0 / v1.2.1 / v1.2.2 均已发布 |
@@ -272,8 +297,8 @@ docs/release-notes/
 
 | 层级 | 命令 | 说明 |
 |---|---|---|
-| 单元 | `pytest tests -q` | 148 项，约 1.4 秒 |
-| 一致性 | `tools/check_consistency.py` | 11 节交叉校验：数量声明/版本/品牌/数据目录/截图/i18n/链接/站点/闭环覆盖/测试数量/自身规模 |
+| 单元 | `pytest tests -q` | 162 项，约 1.5 秒 |
+| 一致性 | `tools/check_consistency.py` | 12 节交叉校验：数量声明/版本/品牌/数据目录/截图/i18n/链接/站点/闭环覆盖/测试数量/更新清单/自身规模 |
 | 站点 | `tools/check_site.py` | 资源可达 / 版本一致 / 双语互链 / 无越界引用 |
 | 端到端 | 构建 → 安装 → 启动 → 卸载 | 手动，见下 |
 
@@ -470,6 +495,27 @@ verify 永久假失败、回滚把用户配置改成另一个值。
 
 **闭环脚本里也要刷**：构造出故障态之后必须 `ctx.refresh_adapters()`，
 否则动作读到的还是构造前的值。`closed_loop_v12.py` 已加。
+
+### 文档里的"零上传"表述与更新检测冲突（v1.3.0 前修正）
+
+加了更新检测后，原来的说法"代码里没有任何上传逻辑 / 网络请求只有 ICMP 与
+DNS"就变成**不准确**了——多了一条可选的 HTTPS GET。措辞必须同步改成
+"对外请求有两类：检测探测 + 可选的版本号查询"，并写清楚它不带什么。
+
+**这不是文字游戏**：这个产品的卖点就是"说什么就是什么"。留着一句不准确的
+表述，等于把前面所有承诺的可信度一起打折。
+
+改动点：`README.md`（特性表 + FAQ 两条）、`README_EN.md`、
+`SECURITY.md` 第 3 节、`docs/设计方案.md` 抬头。
+
+### 测试断言会命中注释里的文字（第三次踩）
+
+写 `TestUpdatePrivacyBoundary` 时断言"源码里不得出现 hostname/username/guid"，
+结果函数 docstring 里正写着"**不要**加主机名/用户名/GUID"——断言命中的是
+这句说明本身，测试红。
+
+这与门禁里"注释被当成一节"是同一类错误。**凡是拿源码文本做断言的检查，
+先剥掉注释与 docstring**。本仓库已出现三次，值得记一笔。
 
 ### 编辑工具会把整份文件转成 CRLF，污染 diff
 
@@ -725,7 +771,7 @@ document.elementFromPoint(cx, b.top + 15)   // 必须命中 IMG，不是 DIV.wra
 
 **发布相关脚本**：
 
-- `tools/check_consistency.py` —— 11 节交叉校验，改文档/版本后必跑
+- `tools/check_consistency.py` —— 12 节交叉校验，改文档/版本后必跑
 - `tools/repo_about.py` + `tools/apply_repo_about.py` —— 生成并应用双语 About 与 topics
 - `tools/update_release_bodies.py` —— 发布说明中英合并与推送（`merge` 子命令只生成不推送）
 - `tools/publish_github.py` / `tools/final_publish.py` —— 版本号均从 branding 读（切勿改回硬编码）

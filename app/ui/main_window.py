@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from core import platform_win as pw
 from core import i18n
+from core import update as update_mod
 from core.context import DiagnosticContext
 from core.branding import NAME, NAME_ZH, VERSION
 from core.i18n import t
@@ -88,6 +89,10 @@ class MainWindow(QMainWindow):
         # 启动后自动体检一次，让用户打开即见结果（可在设置里关闭）
         if self.settings.get_bool("auto_scan_on_start"):
             QTimer.singleShot(420, self.start_scan)
+
+        # 更新检查放在体检之后、且延迟更久：体检才是这个软件的正文，
+        # 更新提示不该抢占首屏。2.6 秒足够让体检先把界面填起来。
+        QTimer.singleShot(2600, self._maybe_check_updates)
 
     # ------------------------------------------------------------------ #
     # 构建
@@ -210,6 +215,30 @@ class MainWindow(QMainWindow):
         header.addWidget(self.status_chip)
         main_lay.addLayout(header)
 
+        # 更新提示条：默认隐藏，查到新版本才出现。
+        # 刻意做成"一条窄提示"而不是弹窗——这是诊断工具，弹窗打断体检流程
+        # 且容易被当成广告，用户会直接关掉而不看内容。
+        self.update_bar = QFrame()
+        self.update_bar.setObjectName("UpdateBar")
+        self.update_bar.setVisible(False)
+        ub = QHBoxLayout(self.update_bar)
+        ub.setContentsMargins(12, 7, 12, 7)
+        ub.setSpacing(10)
+        self.update_text = QLabel("")
+        self.update_text.setWordWrap(True)
+        ub.addWidget(self.update_text, 1)
+        self.btn_update_view = QPushButton("")
+        self.btn_update_view.setObjectName("Ghost")
+        self.btn_update_view.clicked.connect(self._open_update_page)
+        ub.addWidget(self.btn_update_view, 0)
+        self.btn_update_dismiss = QPushButton("✕")
+        self.btn_update_dismiss.setObjectName("Ghost")
+        self.btn_update_dismiss.setFixedWidth(28)
+        self.btn_update_dismiss.clicked.connect(self._dismiss_update)
+        ub.addWidget(self.btn_update_dismiss, 0)
+        main_lay.addWidget(self.update_bar)
+        self._update_info: update_mod.UpdateInfo | None = None
+
         self.stack = QStackedWidget()
         self.scenario_page = ScenarioPage(self.state)
         self.dashboard = DashboardPage(self.state)
@@ -310,9 +339,97 @@ class MainWindow(QMainWindow):
             hook = getattr(page, "retranslate", None)
             if callable(hook):
                 hook()
+        # 更新提示条同理：体检发生在后台，用户可能中途切了语言
+        if getattr(self, "_update_info", None) is not None:
+            self.update_text.setText(t("update.available", version=self._update_info.version))
+            self.btn_update_view.setText(t("update.view"))
+
         # 状态栏可能正显示上一次的体检结论，重算一次
         if self.state.report is not None:
             self._on_report_set(self.state.report)
+
+    # ------------------------------------------------------------------ #
+    # 更新检查
+    # ------------------------------------------------------------------ #
+    def _maybe_check_updates(self) -> None:
+        """启动后的更新检查入口：先问一次要不要开启，之后按 24 小时节流。"""
+        # 用户关掉了联网探测 → 更新检查也必须跳过。
+        # 这是同一条隐私边界，"允许联网探测"的语义是"允许本机发起网络请求"，
+        # 不能因为这是另一个功能就绕过它。
+        if not self.settings.get_bool("allow_network_probe"):
+            return
+
+        if not self.settings.get_bool("update_prompt_seen"):
+            self._ask_update_consent()
+            return
+
+        if not self.settings.get_bool("check_updates"):
+            return
+
+        last = self.settings.get_int("last_update_check")
+        if last and (time.time() - last) < update_mod.CHECK_INTERVAL:
+            return
+        self._run_update_check()
+
+    def _ask_update_consent(self) -> None:
+        """一次性询问：要不要检查更新。
+
+        刻意做成"问一次，选了就记住"：
+        这个产品对外的承诺是零上传，开启联网查版本必须由用户自己决定；
+        但同时也不该每次启动都问一遍——那会变成骚扰。
+        """
+        box = QMessageBox(self)
+        box.setWindowTitle(t("update.consent.title"))
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setText(t("update.consent.body"))
+        box.setInformativeText(t("update.consent.detail"))
+        yes = box.addButton(t("update.consent.yes"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(t("update.consent.no"), QMessageBox.ButtonRole.RejectRole)
+        box.exec()
+        enabled = box.clickedButton() is yes
+        self.settings.set("check_updates", enabled)
+        self.settings.set("update_prompt_seen", True)
+        write_audit(event="settings", target="update_check",
+                    detail="on" if enabled else "off", ok=True)
+        if enabled:
+            self._run_update_check()
+
+    def _run_update_check(self) -> None:
+        """后台线程查版本。失败静默——这是诊断工具，不该因为自己联网
+        失败而给用户弹错误。"""
+        self.settings.set("last_update_check", int(time.time()))
+        self._pending_kind = "update"
+        self._runner.run(self._task_update_check)
+
+    def _task_update_check(self, progress=None):
+        return update_mod.check_for_update(VERSION)
+
+    def _on_update_found(self, info) -> None:
+        if info is None:
+            return
+        self._update_info = info
+        self.update_text.setText(t("update.available", version=info.version))
+        self.btn_update_view.setText(t("update.view"))
+        self.update_bar.setVisible(True)
+        write_audit(event="update", target="check", detail=info.version, ok=True)
+
+    def _open_update_page(self) -> None:
+        """打开 Release 页面。
+
+        只跳浏览器，不做内置下载与自动升级：当前没有代码签名，
+        自动替换可执行文件等于给用户装一个来路不明的程序。
+        """
+        import webbrowser
+
+        info = self._update_info
+        url = info.url if info else "https://github.com/Levanll/LanPulse/releases/latest"
+        try:
+            webbrowser.open(url)
+        except Exception:  # noqa: BLE001 - 打不开浏览器不该崩
+            log.warning("打开更新页面失败: %s", url)
+
+    def _dismiss_update(self) -> None:
+        self.update_bar.setVisible(False)
 
     def _on_language_changed(self, lang: str) -> None:
         i18n.set_language(lang)
@@ -588,6 +705,10 @@ class MainWindow(QMainWindow):
             self.toast.show_message("已创建备份快照")
             return
 
+        if kind == "update":
+            self._on_update_found(value)
+            return
+
         if kind == "hosts_save":
             payload = value or {}
             session = payload.get("session")
@@ -602,6 +723,11 @@ class MainWindow(QMainWindow):
     def _on_task_failed(self, msg: str) -> None:
         self.pt.stop()
         kind, self._pending_kind = self._pending_kind, ""
+        # 更新检查失败一律静默：诊断工具不该因为自己连不上更新服务器
+        # 而给用户报错，那既无意义又制造焦虑。
+        if kind == "update":
+            log.debug("更新检查失败（已忽略）: %s", msg)
+            return
         if kind == "scan":
             self.dashboard.set_busy(False)
         if kind in ("repair", "dryrun"):

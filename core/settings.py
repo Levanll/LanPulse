@@ -52,6 +52,14 @@ DEFAULTS: dict[str, Any] = {
     # 窗口尺寸记忆
     "window_width": 1280,
     "window_height": 820,
+    # 更新检查：默认关闭，首次启动时询问一次（见 core/update.py 顶部说明）。
+    # 默认关是刻意的——产品的对外承诺是"零上传"，开启联网查版本这件事
+    # 必须由用户知情同意，不能替他决定。
+    "check_updates": False,
+    # 是否已经问过用户"要不要检查更新"。false 表示还没问过。
+    "update_prompt_seen": False,
+    # 上次自动检查的时间戳（Unix 秒），用于 24 小时节流。
+    "last_update_check": 0,
 }
 
 

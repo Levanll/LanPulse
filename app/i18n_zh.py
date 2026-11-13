@@ -1763,6 +1763,26 @@ CATALOG: dict[str, str] = {
     'diagnose.col_time': '耗时',
 
     'diagnose.meta': '共 {n} 项｜{host}｜{ts}',
+
+    # ---- 更新检查 ----
+    # 这一组文案承担一个特殊职责：向用户解释"为什么一个号称零上传的软件
+    # 会发网络请求"。措辞必须具体到"只请求一个版本号文件"，不能含糊成
+    # "检查更新需要联网"——含糊会让用户怀疑前面所有承诺。
+    'update.consent.title': '检查更新',
+    'update.consent.body': 'LanPulse 可以每隔一段时间检查是否有新版本，要开启吗？',
+    'update.consent.detail': (
+        '检查时只会向官方网站请求一个版本号文件，不发送任何你的信息：'
+        '没有账号、没有设备标识、没有使用统计。随时可以在设置里关闭。'
+    ),
+    'update.consent.yes': '开启检查',
+    'update.consent.no': '不用了',
+    'update.available': '发现新版本 v{version}',
+    'update.view': '查看',
+    'update.check_now': '立即检查',
+    'update.checking': '正在检查…',
+    'update.up_to_date': '已是最新版本',
+    'settings.update.title': '检查更新',
+    'settings.update.desc': '仅向官网请求一个版本号文件，不上传任何信息',
 }
 
 __all__ = ["CATALOG"]

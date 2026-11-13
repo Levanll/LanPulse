@@ -15,6 +15,7 @@ r"""项目一致性检查：确保所有对外信息与实际代码同步。
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -107,6 +108,15 @@ def _closed_loop_actions() -> set[str]:
             continue
         actions.update(re.findall(r'"([a-z_]+\.[a-z_]+)"', m.group(1)))
     return actions
+
+
+def _ver_tuple_ge(left: str, right: str) -> bool:
+    """left >= right，按数字分段比较（"1.10.0" > "1.9.0"）。"""
+    try:
+        return tuple(int(x) for x in left.lstrip("vV").split(".")) >= \
+               tuple(int(x) for x in right.lstrip("vV").split("."))
+    except ValueError:
+        return False
 
 
 def _count_tests() -> int:
@@ -509,11 +519,43 @@ def main() -> int:
                 claimed == {n_tests},
                 f"HANDOFF 写的是 {sorted(claimed) or '未找到'}") else 1
 
-    # ---- 11. 门禁自身规模 ----
+    # ---- 11. 更新清单 ----
+    # site/latest.json 是更新检测的唯一数据源。它一旦与 branding.VERSION
+    # 脱节，用户就永远收不到（或永远收到）更新提示，而且不会有任何报错。
+    section("[11] 更新清单")
+    manifest_path = ROOT / "site" / "latest.json"
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except ValueError as exc:
+            manifest = None
+            failures += 0 if check("site/latest.json 可解析", False, str(exc)) else 1
+        if isinstance(manifest, dict):
+            failures += 0 if check(
+                "site/latest.json 可解析", True) else 1
+            mver = str(manifest.get("version") or "")
+            # 清单版本不得低于当前版本：低于意味着发版时忘了更新，
+            # 所有用户都会收到"有新版本"却指向已发布的旧版。
+            ok = bool(mver) and _ver_tuple_ge(mver, VERSION)
+            failures += 0 if check(
+                f"清单版本 {mver or '缺失'} >= 当前 {VERSION}", ok,
+                "发版时必须同步更新 site/latest.json") else 1
+            url = str(manifest.get("url") or "")
+            failures += 0 if check(
+                "清单 url 为 https", url.startswith("https://"), url) else 1
+            # 双语文案 key 必须齐全（可为空串，但字段得存在）
+            missing = [k for k in ("notes_zh", "notes_en", "mandatory")
+                       if k not in manifest]
+            failures += 0 if check("清单含双语字段", not missing,
+                                   ", ".join(missing)) else 1
+    else:
+        failures += 0 if check("site/latest.json 存在", False) else 1
+
+    # ---- 12. 门禁自身规模 ----
     # 文档长期写"18 项"，而脚本实际跑 20 项且从未被核对过。根因是
     # "项"这个单位本身模糊：它既可以是"节"，也可以是"子检查"。
     # 现在对外口径统一为**节数**（结构稳定），子检查数一并打印但不管制。
-    section("[11] 门禁自身规模")
+    section("[12] 门禁自身规模")
     # 只认**真的执行过**的节：section() 每被调用一次就登记一次。
     # 这里绝不能去数源码里的 print("\n[N] ...") 字面量——注释里写一句
     # 同一段文字就会被算成一节。上一版正是如此：第 449 行那条解释性注释

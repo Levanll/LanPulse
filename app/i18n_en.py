@@ -1979,6 +1979,27 @@ CATALOG: dict[str, str] = {
     'diagnose.col_time': 'Time',
 
     'diagnose.meta': '{n} checks | {host} | {ts}',
+
+    # ---- Update check ----
+    # These strings have a specific job: explain why a tool that promises
+    # "zero upload" still makes an outbound request. Be concrete — "only a
+    # version file" — never vague, or every other promise looks doubtful.
+    'update.consent.title': 'Check for updates',
+    'update.consent.body': 'LanPulse can check for new versions from time to time. Turn this on?',
+    'update.consent.detail': (
+        'The check only requests a version file from the official site. '
+        'Nothing about you is sent: no account, no device ID, no usage statistics. '
+        'You can turn it off in Settings at any time.'
+    ),
+    'update.consent.yes': 'Enable',
+    'update.consent.no': 'No thanks',
+    'update.available': 'Version v{version} is available',
+    'update.view': 'View',
+    'update.check_now': 'Check now',
+    'update.checking': 'Checking…',
+    'update.up_to_date': "You're up to date",
+    'settings.update.title': 'Check for updates',
+    'settings.update.desc': 'Requests only a version file from the official site; nothing is uploaded',
 }
 
 __all__ = ["CATALOG"]
