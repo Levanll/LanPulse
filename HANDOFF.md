@@ -1,8 +1,9 @@
 # 交接文档（HANDOFF）
 
 > 面向：接手继续开发的新会话
-> 更新时间：2026-11-11
+> 更新时间：2026-11-13
 > 当前版本：LanPulse v1.3.0（已发布）
+> 最新提交：`a38eaaa` 修复更新检查抢 runner（**已合入 main，尚未发版**）
 > 仓库：https://github.com/Levanll/LanPulse
 > 工作目录：`D:\Documents\deepseek-harness\default-workspace\lanpulse`
 
@@ -20,7 +21,7 @@
 
 技术栈：Python 3.12 + PySide6 6.8 + PyInstaller 6.22（onedir）+ Inno Setup 6.7.3。
 
-**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1401 条双语文案 / 165 项测试。
+**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1401 条双语文案 / 168 项测试。
 
 ---
 
@@ -34,7 +35,7 @@ cd D:\Documents\deepseek-harness\default-workspace\lanpulse
 $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe main.py
 
-# 全量测试（165 项，约 1.4 秒）
+# 全量测试（168 项，约 1.4 秒）
 .\.venv\Scripts\python.exe -m pytest tests -q
 
 # 提交前必跑的四道门禁（全部必须 exit=0）
@@ -49,6 +50,10 @@ $env:PYTHONPATH="."
 # 完整构建（PyInstaller + Inno Setup，产出 release\）
 powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 ```
+
+**⚠ main 上有一个未发版的修复**：`a38eaaa`（更新检查抢 runner）。
+版本号仍是 1.3.0，但这处修复只存在于源码里，**已发布给用户的 1.3.0
+安装包不含它**。下次发版时按下面流程升到 1.3.1 即可带走。
 
 **发版流程（v1.2.2 起按这个顺序）**：
 
@@ -99,7 +104,7 @@ lanpulse/
 │   ├── sysutil.py             提权 / 单实例 / 环境自检
 │   ├── report.py              HTML / JSON / TXT 导出
 │   └── ui/                    PySide6 界面（9 个页面）
-├── tests/                     165 项
+├── tests/                     168 项
 ├── tools/                     开发与运维脚本（见第八节）
 ├── installer/                 Inno Setup 脚本与资源
 ├── site/                      落地页（GitHub Pages 的发布源，自包含）
@@ -221,6 +226,8 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 - 地址：https://github.com/Levanll/LanPulse
 - 分支：`main`（历史已重写为干净起点）
 - 最新 Release：`v1.3.0`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
+- **main 上有未发版的修复**：`a38eaaa`（更新检查抢 runner → 体检结果丢失）。
+  版本号仍是 1.3.0，下次发版需升到 1.3.1 并重跑完整发版流程
 - 数据目录：`%LOCALAPPDATA%\LanPulse`
 - Packages：**有意保持为空**（本项目为 Windows exe，GitHub Packages 的 registry 均不匹配）
 - 落地页：https://levanll.github.io/LanPulse/ （源在 `site/`，双语互链）
@@ -280,6 +287,10 @@ docs/release-notes/
    因为把 `dns.set_public` / `dns.flush_cache` 在"已测清单"和"另有 dns.* 两项"里
    各数了一次。**新增闭环动作时改的是脚本，不是这段文字。**
 4. **回滚失败路径未测试** —— 代码有处理，但没有构造过"回滚中途失败"的场景。
+4b. **1.3.0 安装包不含 P1 修复** —— `a38eaaa` 修复了"更新检查抢走体检任务槽、
+   导致体检结果丢失"，但只合入 main，**没进已发布的 1.3.0 安装包**。用户侧
+   仍会遭遇该缺陷（默认开启自动体检 + 首个启动周期同意更新检查时必现）。
+   这不是"已解决"，下一次发版才真正消除。
 5. **无代码签名** —— SmartScreen 会提示"未知发布者"。
 6. **VPN 网卡不参与优化决策** —— 刻意为之，避免破坏既有 VPN 配置。
 7. **`privacy_audit.py` 阈值刻意宽松** —— 只在严重/高级别返回 1；当前的「中=2、低=75 上下」
@@ -298,7 +309,7 @@ docs/release-notes/
 
 | 层级 | 命令 | 说明 |
 |---|---|---|
-| 单元 | `pytest tests -q` | 165 项，约 1.4 秒 |
+| 单元 | `pytest tests -q` | 168 项，约 1.4 秒 |
 | 一致性 | `tools/check_consistency.py` | 12 节交叉校验：数量声明/版本/品牌/数据目录/截图/i18n/链接/站点/闭环覆盖/测试数量/更新清单/自身规模 |
 | 站点 | `tools/check_site.py` | 资源可达 / 版本一致 / 双语互链 / 无越界引用 |
 | 端到端 | 构建 → 安装 → 启动 → 卸载 | 手动，见下 |
@@ -497,7 +508,7 @@ verify 永久假失败、回滚把用户配置改成另一个值。
 **闭环脚本里也要刷**：构造出故障态之后必须 `ctx.refresh_adapters()`，
 否则动作读到的还是构造前的值。`closed_loop_v12.py` 已加。
 
-### 更新检查抢走体检的 runner，导致体检结果丢失（v1.3.1 修正）
+### 更新检查抢走体检的 runner，导致体检结果丢失（v1.3.0 发布后修正）
 
 更新检查由启动后 **2.6 秒**的定时器触发，而默认开启的体检在 **420 毫秒**
 就启动、要跑数秒网络探测——两者共用同一个 `TaskRunner`。2.6 秒时 runner

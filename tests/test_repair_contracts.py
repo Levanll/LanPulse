@@ -373,3 +373,43 @@ class TestUpdateCheckDoesNotStealRunner:
         code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
         assert "isinstance(info, update_mod.UpdateInfo)" in code, \
             "分派错时必须有类型守卫，不能在 UI 线程抛异常"
+
+    def test_busy_defers_instead_of_dropping(self):
+        """忙时不能静默丢弃本轮检查，要记待补标志。
+
+        v1.3.0 的修法是「忙就 return」，看起来安全，但默认配置下
+        体检 14.6s、定时器 2.6s，等于每轮都丢——用户开了「检查更新」
+        却永远收不到提示。必须延后补做，而不是丢掉。
+        """
+        src = (ROOT / "app" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
+
+        i_busy = code.find('if self._runner.busy:')
+        i_flag = code.find('self._update_check_pending = True')
+        assert i_flag != -1, "忙时应记下待补标志，而不是直接返回"
+        assert i_busy != -1 and i_busy < i_flag, "待补标志必须在 busy 分支里设置"
+
+    def test_pending_check_flushed_after_task_ends(self):
+        """任务收尾必须兑现延后的更新检查（成功与失败两条路径都要）。"""
+        src = (ROOT / "app" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
+
+        assert code.count("self._flush_pending_update_check()") >= 2, \
+            "_on_task_done 与 _on_task_failed 都要调用补做"
+        # 放在 finally 里，避免将来新增分支时漏掉
+        assert "finally:" in code, "补做应放在 finally 中，保证每条分支都执行"
+
+    def test_none_result_is_not_warning(self):
+        """None 是「没有更新」的正常结果，不能记 WARNING。
+
+        check_for_update 的契约是「没有更新或任何失败都返回 None」，
+        若把 None 当非预期结果记 warning，每次正常启动都会在 app.log
+        留一条误导性告警，排障时反而掩盖真问题。
+        """
+        src = (ROOT / "app" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
+
+        i_none = code.find("if info is None:")
+        i_guard = code.find("isinstance(info, update_mod.UpdateInfo)")
+        assert i_none != -1, "必须单独处理 None"
+        assert i_none < i_guard, "None 的判断必须在类型守卫之前"

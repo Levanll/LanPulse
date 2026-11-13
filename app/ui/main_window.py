@@ -80,6 +80,14 @@ class MainWindow(QMainWindow):
         self._pending_kind = ""
         self._pending_scenario = "full"
         self._pending_servers: list | None = None
+        # 本轮是否需要补一次更新检查。
+        #
+        # 更新检查由启动后 2.6s 的定时器触发，而默认开启的体检在 420ms 就起来、
+        # 要跑好几秒——两者共用同一个 runner，所以定时器触发时几乎必然在忙。
+        # 早先的做法是「忙就丢掉这一轮」，结果默认配置下更新检查永远不执行：
+        # 用户在同意弹窗里选了开启、check_updates 记为 true，却再也不会收到提示。
+        # 现在改为记下待补标志，体检（或其它任务）结束后立刻补一次。
+        self._update_check_pending = False
 
         self._build_ui()
         self.setStyleSheet(QSS)
@@ -407,12 +415,14 @@ class MainWindow(QMainWindow):
         dashboard.set_busy(False) 与 state.set_report()，界面永久停在
         「正在体检…」，本次体检结果丢失。
 
-        宁可这一轮不查更新（下次启动还会查），也不能干扰体检。
+        绝不能干扰体检；但也不能静默丢弃本轮检查——默认配置下体检 14.6s、
+        定时器 2.6s，丢一次就等于每次都丢，用户开着「检查更新」却永远收不到提示。
+        所以忙时只记待补标志，由 _flush_pending_update_check 在队列空出来时兑现。
         """
         if self._runner.busy:
-            # 正在体检或修复，更新检查让路。last_update_check 也不写：
-            # 写了会让下一次真正执行被 24 小时节流挡掉。
-            log.debug("runner 忙，跳过本次更新检查")
+            # last_update_check 此刻不写：写了会让补做的这次被 24 小时节流挡掉。
+            log.debug("runner 忙，更新检查延后到本次任务结束后")
+            self._update_check_pending = True
             return
         self.settings.set("last_update_check", int(time.time()))
         self._pending_kind = "update"
@@ -423,10 +433,29 @@ class MainWindow(QMainWindow):
             self._pending_kind = ""
             log.debug("更新检查未启动，_pending_kind 已复位")
 
+    def _flush_pending_update_check(self) -> None:
+        """把延后的更新检查补上。
+
+        在每次任务收尾（_on_task_done / _on_task_failed）之后调用，
+        此时 runner 已空闲。延后一整轮比丢掉它更符合用户预期：
+        用户开启「检查更新」时期待的是"会查"，不是"碰巧队列空闲时才会查"。
+        """
+        if not self._update_check_pending:
+            return
+        self._update_check_pending = False
+        # 延后期间用户可能改了设置，重新走一遍完整入口做节流与开关判断。
+        self._maybe_check_updates()
+
     def _task_update_check(self, progress=None):
         return update_mod.check_for_update(VERSION)
 
     def _on_update_found(self, info) -> None:
+        # check_for_update 的契约是「没有更新、或任何失败都返回 None」，
+        # 所以 None 是最常见的正常结果，直接返回即可 —— 不能记 WARNING，
+        # 否则每次正常启动都会往 app.log 写一条误导性告警。
+        if info is None:
+            log.debug("没有可用更新")
+            return
         # 类型守卫：万一 _pending_kind 被污染，这里宁可什么都不做，
         # 也不能在 UI 线程里抛异常——那会连带跳过调用方的收尾逻辑。
         if not isinstance(info, update_mod.UpdateInfo):
@@ -706,6 +735,14 @@ class MainWindow(QMainWindow):
 
     def _on_task_done(self, value) -> None:
         self.pt.stop()
+        try:
+            self._dispatch_task_done(value)
+        finally:
+            # 无论落到哪个分支（每条都 return），都要在收尾后兑现延后的更新检查。
+            # 放 finally 是为了避免将来新增分支漏掉这一步。
+            self._flush_pending_update_check()
+
+    def _dispatch_task_done(self, value) -> None:
         kind, self._pending_kind = self._pending_kind, ""
 
         if kind == "scan":
@@ -747,6 +784,14 @@ class MainWindow(QMainWindow):
 
     def _on_task_failed(self, msg: str) -> None:
         self.pt.stop()
+        try:
+            self._dispatch_task_failed(msg)
+        finally:
+            # 任务失败同样意味着 runner 空出来了，延后的更新检查要兑现，
+            # 否则一次失败的体检会让更新提示永久延后。
+            self._flush_pending_update_check()
+
+    def _dispatch_task_failed(self, msg: str) -> None:
         kind, self._pending_kind = self._pending_kind, ""
         # 更新检查失败一律静默：诊断工具不该因为自己连不上更新服务器
         # 而给用户报错，那既无意义又制造焦虑。
