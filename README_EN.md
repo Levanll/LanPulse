@@ -45,8 +45,8 @@ Grab one of these from [Releases](https://github.com/Levanll/LanPulse/releases/l
 
 | Artifact | Use it if |
 |---|---|
-| `LanPulse-1.3.0-Setup.exe` | You want a normal install with a Start-menu shortcut |
-| `LanPulse-1.3.0-win64-portable.zip` | You want the portable build — unzip and run, no registry writes |
+| `LanPulse-1.3.1-Setup.exe` | You want a normal install with a Start-menu shortcut |
+| `LanPulse-1.3.1-win64-portable.zip` | You want the portable build — unzip and run, no registry writes |
 
 > **First launch will trip SmartScreen ("Windows protected your PC").** Click **More info → Run anyway**. Current builds are unsigned; that is all it means.
 

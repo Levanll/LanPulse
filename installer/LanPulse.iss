@@ -25,7 +25,7 @@
 ; ============================================================================
 
 #define MyAppName        "LanPulse"
-#define MyAppVersion     "1.3.0"
+#define MyAppVersion     "1.3.1"
 #define MyAppPublisher   "LanPulse Contributors"
 #define MyAppExeName     "LanPulse.exe"
 #define MyAppId          "{{B7E4C2A1-9F3D-4E8B-A5C6-1D2E3F4A5B6C}"

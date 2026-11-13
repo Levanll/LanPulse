@@ -1,7 +1,7 @@
 {
-  "version": "1.3.0",
+  "version": "1.3.1",
   "url": "https://github.com/Levanll/LanPulse/releases/latest",
-  "notes_zh": "新增更新检测：发现新版本时提示，可一键跳转到下载页",
-  "notes_en": "Added update check: notifies you of new versions and links to the download page",
+  "notes_zh": "修复更新检查的两个问题：默认配置下永远不会执行；正常的「无更新」结果被误记为警告",
+  "notes_en": "Fixed two update-check issues: it never ran under default settings, and a normal \"no update\" result was logged as a warning",
   "mandatory": false
 }
