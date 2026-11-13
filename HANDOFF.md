@@ -20,7 +20,7 @@
 
 技术栈：Python 3.12 + PySide6 6.8 + PyInstaller 6.22（onedir）+ Inno Setup 6.7.3。
 
-**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1401 条双语文案 / 162 项测试。
+**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1401 条双语文案 / 165 项测试。
 
 ---
 
@@ -34,7 +34,7 @@ cd D:\Documents\deepseek-harness\default-workspace\lanpulse
 $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe main.py
 
-# 全量测试（162 项，约 1.5 秒）
+# 全量测试（165 项，约 1.4 秒）
 .\.venv\Scripts\python.exe -m pytest tests -q
 
 # 提交前必跑的四道门禁（全部必须 exit=0）
@@ -99,7 +99,7 @@ lanpulse/
 │   ├── sysutil.py             提权 / 单实例 / 环境自检
 │   ├── report.py              HTML / JSON / TXT 导出
 │   └── ui/                    PySide6 界面（9 个页面）
-├── tests/                     162 项
+├── tests/                     165 项
 ├── tools/                     开发与运维脚本（见第八节）
 ├── installer/                 Inno Setup 脚本与资源
 ├── site/                      落地页（GitHub Pages 的发布源，自包含）
@@ -298,7 +298,7 @@ docs/release-notes/
 
 | 层级 | 命令 | 说明 |
 |---|---|---|
-| 单元 | `pytest tests -q` | 162 项，约 1.5 秒 |
+| 单元 | `pytest tests -q` | 165 项，约 1.4 秒 |
 | 一致性 | `tools/check_consistency.py` | 12 节交叉校验：数量声明/版本/品牌/数据目录/截图/i18n/链接/站点/闭环覆盖/测试数量/更新清单/自身规模 |
 | 站点 | `tools/check_site.py` | 资源可达 / 版本一致 / 双语互链 / 无越界引用 |
 | 端到端 | 构建 → 安装 → 启动 → 卸载 | 手动，见下 |
@@ -496,6 +496,32 @@ verify 永久假失败、回滚把用户配置改成另一个值。
 
 **闭环脚本里也要刷**：构造出故障态之后必须 `ctx.refresh_adapters()`，
 否则动作读到的还是构造前的值。`closed_loop_v12.py` 已加。
+
+### 更新检查抢走体检的 runner，导致体检结果丢失（v1.3.1 修正）
+
+更新检查由启动后 **2.6 秒**的定时器触发，而默认开启的体检在 **420 毫秒**
+就启动、要跑数秒网络探测——两者共用同一个 `TaskRunner`。2.6 秒时 runner
+几乎必然还在忙。
+
+`_run_update_check` 当时先改 `_pending_kind = "update"` 再调 `run()`，
+而 `run()` 在忙时返回 False 且**根本不执行**。于是体检结束时
+`_on_task_done` 把 `DiagnosticReport` 交给 `_on_update_found`：
+
+- 读 `info.version` 抛 `AttributeError`；
+- 连带跳过 `dashboard.set_busy(False)` 与 `state.set_report()`；
+- **界面永久停在「正在体检…」，本次体检结果丢失**。
+
+修复三处：
+
+1. 改写 `_pending_kind` 之前先判 `self._runner.busy`，忙则直接返回
+   （也不写 `last_update_check`，否则会被 24 小时节流挡掉下一次真正执行）
+2. 检查 `run()` 返回值，未启动就把 `_pending_kind` 复位
+3. `_on_update_found` 加类型守卫，分派错时记 warning 而不是在 UI 线程抛异常
+
+`TestUpdateCheckDoesNotStealRunner` 三条用例锁住这个时序。
+
+**教训**：多个功能共用一个串行 runner 时，"改写当前任务标识"与"提交任务"
+必须是同一个原子判断。分开写就会出现"标识改了、任务没提交"的脏状态。
 
 ### 文档里的"零上传"表述与更新检测冲突（v1.3.0 前修正）
 

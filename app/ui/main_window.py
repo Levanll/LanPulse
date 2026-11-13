@@ -396,16 +396,41 @@ class MainWindow(QMainWindow):
 
     def _run_update_check(self) -> None:
         """后台线程查版本。失败静默——这是诊断工具，不该因为自己联网
-        失败而给用户弹错误。"""
+        失败而给用户弹错误。
+
+        **必须先确认 runner 空闲再改写 _pending_kind**。这里曾经踩过一次：
+        更新检查由启动后 2.6s 的定时器触发，而默认开启的体检在 420ms 就起来、
+        且要跑好几秒网络探测，所以 2.6s 时 runner 几乎必然还在忙。
+        `run()` 在忙时返回 False 且根本不执行，但 _pending_kind 已经被改成
+        "update" —— 体检结束时 _on_task_done 就会把 DiagnosticReport 交给
+        _on_update_found，读 .version 抛 AttributeError，同时跳过
+        dashboard.set_busy(False) 与 state.set_report()，界面永久停在
+        「正在体检…」，本次体检结果丢失。
+
+        宁可这一轮不查更新（下次启动还会查），也不能干扰体检。
+        """
+        if self._runner.busy:
+            # 正在体检或修复，更新检查让路。last_update_check 也不写：
+            # 写了会让下一次真正执行被 24 小时节流挡掉。
+            log.debug("runner 忙，跳过本次更新检查")
+            return
         self.settings.set("last_update_check", int(time.time()))
         self._pending_kind = "update"
-        self._runner.run(self._task_update_check)
+        if not self._runner.run(self._task_update_check):
+            # 理论上到不了这里（上面已判 busy），但 run() 的返回契约是
+            # "没执行就返回 False"。真出现了说明状态被别处改了，
+            # 必须把 _pending_kind 复位，否则同样会污染体检的分派。
+            self._pending_kind = ""
+            log.debug("更新检查未启动，_pending_kind 已复位")
 
     def _task_update_check(self, progress=None):
         return update_mod.check_for_update(VERSION)
 
     def _on_update_found(self, info) -> None:
-        if info is None:
+        # 类型守卫：万一 _pending_kind 被污染，这里宁可什么都不做，
+        # 也不能在 UI 线程里抛异常——那会连带跳过调用方的收尾逻辑。
+        if not isinstance(info, update_mod.UpdateInfo):
+            log.warning("更新检查收到非预期结果，已忽略: %s", type(info).__name__)
             return
         self._update_info = info
         self.update_text.setText(t("update.available", version=info.version))

@@ -334,3 +334,42 @@ class TestMtuAliasResolution:
         assert 'm.group("alias")' in code, "别名必须从解析出的列取值"
         assert "== alias" in code, "必须整列精确比较，不能 alias in line"
         assert "alias in line" not in code, "不得对整行做子串匹配"
+
+class TestUpdateCheckDoesNotStealRunner:
+    """更新检查不得在 runner 忙时改写 _pending_kind。
+
+    真实事故（v1.3.0 发布后发现）：更新检查由启动后 2.6s 的 QTimer 触发，
+    而默认开启的体检在 420ms 就启动、要跑数秒网络探测，因此 2.6s 时
+    runner 几乎必然仍在忙。`run()` 忙时返回 False 且根本不执行，但
+    `_pending_kind` 已被改成 "update"，于是体检完成时
+    `_on_task_done` 会把 DiagnosticReport 交给 `_on_update_found`：
+
+      * 读 `info.version` 抛 AttributeError；
+      * 跳过 `dashboard.set_busy(False)` 与 `state.set_report()`；
+      * 界面永久停在「正在体检…」，本次体检结果丢失。
+
+    这里锁住两条不变量：忙时不得改写 kind；收到非 UpdateInfo 不得抛异常。
+    """
+
+    def test_busy_guard_before_pending_kind(self):
+        src = (ROOT / "app" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
+        # 必须在改写 _pending_kind 之前判断 busy
+        i_busy = code.find('if self._runner.busy:')
+        i_kind = code.find('self._pending_kind = "update"')
+        assert i_busy != -1, "缺少 runner.busy 守卫"
+        assert i_kind != -1, "未找到 _pending_kind 赋值"
+        assert i_busy < i_kind, "必须先判 busy 再改写 _pending_kind"
+
+    def test_run_return_value_checked(self):
+        src = (ROOT / "app" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
+        # run() 的契约是"没执行返回 False"，返回值必须被检查并复位
+        assert "if not self._runner.run(self._task_update_check)" in code, \
+            "必须检查 run() 的返回值，失败时复位 _pending_kind"
+
+    def test_on_update_found_rejects_wrong_type(self):
+        src = (ROOT / "app" / "ui" / "main_window.py").read_text(encoding="utf-8")
+        code = "\n".join(line.split("#", 1)[0] for line in src.splitlines())
+        assert "isinstance(info, update_mod.UpdateInfo)" in code, \
+            "分派错时必须有类型守卫，不能在 UI 线程抛异常"
