@@ -137,6 +137,19 @@ class RollbackReport:
         return sum(1 for r in self.results
                    if r.state in (ActionState.ROLLBACK_FAILED, ActionState.FAILED))
 
+    def problems(self) -> list[ActionResult]:
+        """未能还原的项，按失败在前、跳过在后。
+
+        UI 需要把每一项的原因讲清楚：只报"失败 2 项"等于什么都没说，
+        用户既不知道是哪两项，也不知道能不能补救。SKIPPED 也要列出来——
+        非管理员整轮回滚时所有项都会被跳过，此时"成功 0 项、失败 0 项"
+        会让界面看起来像什么都没发生。
+        """
+        failed = [r for r in self.results
+                  if r.state in (ActionState.ROLLBACK_FAILED, ActionState.FAILED)]
+        skipped = [r for r in self.results if r.state is ActionState.SKIPPED]
+        return failed + skipped
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
@@ -149,6 +162,68 @@ class RollbackReport:
             "marked_restored": self.marked_restored,
             "error": self.error,
         }
+
+
+def repair_summary_lines(report: RepairReport) -> list[str]:
+    """把修复结果组织成给人看的几行文字。
+
+    与回滚汇总同源的问题：只报"成功 N 项"会让"全部动作都 SKIPPED"
+    （系统不支持 / 已经是最优状态 / 无待修项）看起来像执行失败或什么都没发生。
+    SKIPPED 必须单独计数并说明，它不是成功也不是失败。
+    """
+    lines = [f"执行完成：成功 {report.ok_count} 项"]
+    if report.fail_count:
+        lines.append(f"失败 {report.fail_count} 项")
+    if report.skipped_count:
+        lines.append(f"跳过 {report.skipped_count} 项（无需修改或系统不支持）")
+    if report.partial:
+        lines.append("")
+        lines.append("⚠ 部分动作未成功，建议到「备份与回滚」回滚本次会话。")
+    lines.append("")
+    lines.append(f"备份会话：{report.session_id}")
+    return lines
+
+
+def rollback_summary_lines(report: RollbackReport) -> list[str]:
+    """把回滚结果组织成给人看的几行文字。
+
+    独立成函数是为了可测：回滚失败提示是用户唯一的补救线索，
+    它错了（例如只说"失败 2 项"、或把"权限不足"说成"备份损坏"）
+    比不提示更糟——用户会朝错误方向排查。UI 只负责把它塞进对话框。
+    """
+    ok = report.ok_count
+    fail = report.fail_count
+    skipped = report.skipped_count
+
+    head = f"回滚完成：成功 {ok} 项"
+    if fail:
+        head += f"，失败 {fail} 项"
+    if skipped:
+        head += f"，未还原 {skipped} 项"
+    lines = [head]
+
+    problems = report.problems()
+    if problems:
+        lines.append("")
+        for r in problems:
+            lines.append(f"• {r.action_id}")
+            # message 与 error 都要给：前者通常点明是哪一项/哪种类型
+            # （例如"未知的备份类型「xxx」"），后者是具体异常与路径。
+            # 只取其一曾导致界面上看不出到底是哪种备份类型无法识别。
+            if r.message:
+                lines.append(f"  {r.message}")
+            if r.error and r.error != r.message:
+                lines.append(f"  {r.error}")
+            if not r.message and not r.error:
+                lines.append("  未提供原因")
+
+    if report.error:
+        lines.append("")
+        lines.append(report.error)
+    if fail:
+        lines.append("")
+        lines.append("部分项目未能还原，可直接重试（备份文件未被改动）。")
+    return lines
 
 
 # --------------------------------------------------------------------------- #
@@ -479,9 +554,15 @@ class RepairEngine:
                                                 elevated=elevated))
 
         report.finished_at = pw.now()
-        # 只有全部恢复成功（或本就不需要恢复）才标记还原。部分失败时保持"未还原"，
+        # 只有全部恢复成功才标记还原。部分失败或**有项被跳过**时都保持"未还原"，
         # 用户才能看到它还能在提权后重试一次，而不是被误标为已完成。
-        if elevated and report.fail_count == 0:
+        #
+        # skipped 必须参与判定：dhcp / winhttp 这类按设计不自动回滚的项会被标为
+        # SKIPPED，而它们代表的配置**确实没有恢复**。只看 fail_count 会在
+        # "什么都没还原"的会话上写入 restored_at——备份列表随即显示「（已还原）」，
+        # 与同一份报告生成的「回滚完成：成功 0 项，未还原 N 项」直接矛盾，
+        # 用户会以为 DHCP 地址已经还原而不去手工核对。
+        if elevated and report.fail_count == 0 and report.skipped_count == 0:
             self.store.mark_restored(session)
             report.marked_restored = True
         return report
@@ -574,4 +655,6 @@ __all__ = [
     "RepairReport",
     "RollbackReport",
     "create_manual_backup",
+    "repair_summary_lines",
+    "rollback_summary_lines",
 ]

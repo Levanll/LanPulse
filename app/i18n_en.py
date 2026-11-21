@@ -1684,7 +1684,6 @@ CATALOG: dict[str, str] = {
                                      "folder manually",
     "msg.rollback_nothing": "This backup session has no items from that action; nothing to roll "
                             "back",
-    "msg.rollback_partial": "Some backup items failed to restore ({n} succeeded)",
     "msg.rollback_done": "Restored {n} backup item(s)",
 
     # ------------------------------------------------------------------ #

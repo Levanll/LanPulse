@@ -551,6 +551,78 @@ def main() -> int:
     else:
         failures += 0 if check("site/latest.json 存在", False) else 1
 
+    # ---- 11b. 回滚状态上报一致性 ----
+    # 这一类缺陷已经出现过两次，形态完全相同：
+    #   分派层判定"没恢复"（SKIPPED / ROLLBACK_FAILED），聚合层把它并进成功，
+    #   最终返回 ROLLED_BACK + verified=True。结果是"回滚成功"这句话变成谎话，
+    #   而备份会话还会被标记为已还原，用户连重试入口都没了。
+    #
+    # 为什么用动态断言而不是静态扫描：静态只能看出"写了哪些 state 比较"，
+    # 判断不了这个比较的含义对不对。这里直接用假的备份商店跑一遍聚合逻辑，
+    # 断言"一项都没恢复时不能报成功"——这是含义层面的检查。
+    section("[11b] 回滚状态上报")
+    try:
+        import tempfile
+
+        from core.backup import BackupStore
+        from core.models import ActionState
+        from core.repair import rollback as _RB
+
+        import core.platform_win as _pw
+
+        real_elevated = _pw.is_elevated
+        try:
+            # 非管理员：所有需要提权的项都会被 _elevation_gate 判成 SKIPPED
+            _pw.is_elevated = lambda: False
+            tmp = Path(tempfile.mkdtemp())
+            store = BackupStore(root=str(tmp / "bk"))
+            sess = store.begin(kind="gate")
+            store.capture_state(sess, key="tcp:autotuning", kind=_RB.KIND_TCP,
+                                label="TCP", payload={"level": "normal"})
+            res = _RB.rollback_items_of_kind(store, sess, None,
+                                             kind=_RB.KIND_TCP,
+                                             action_id="tcp.autotuning")
+            not_faked = (res.state is ActionState.SKIPPED
+                         and res.verified is False)
+            failures += 0 if check(
+                "全部跳过时不得上报为已恢复", not_faked,
+                f"state={res.state.value} verified={res.verified}") else 1
+
+            # 未知备份类型同样不得被改写成成功
+            sess2 = store.begin(kind="gate")
+            store.capture_state(sess2, key="gate:unknown", kind="gate_unknown_kind",
+                                label="未知", payload={})
+            _pw.is_elevated = lambda: True
+            from core.repair import engine as _E
+
+            rb = _E.RepairEngine(store=store).rollback(sess2.session_id, ctx=None)
+            one = rb.results[0]
+            failures += 0 if check(
+                "未知备份类型不得上报为已恢复",
+                one.state is ActionState.ROLLBACK_FAILED and one.verified is not True,
+                f"state={one.state.value} verified={one.verified}") else 1
+
+            # 整轮通道：管理员 + 按设计不自动回滚的项（dhcp）→ 全部 SKIPPED。
+            # 此时绝不能写 restored_at：备份列表会显示「（已还原）」，
+            # 与同一份报告的「成功 0 项，未还原 1 项」直接矛盾。
+            # 注意必须用管理员身份——非管理员时 mark_restored 的前置条件
+            # 本就不成立，那样这条断言恒真，抓不到缺陷。
+            sess3 = store.begin(kind="gate")
+            store.capture_state(sess3, key="dhcp:gate", kind=_RB.KIND_DHCP,
+                                label="DHCP", payload={"ipv4": "192.0.2.42"})
+            rb3 = _E.RepairEngine(store=store).rollback(sess3.session_id, ctx=None)
+            not_marked = (rb3.skipped_count > 0
+                          and rb3.marked_restored is False
+                          and store.load(sess3.session_id).restored_at is None)
+            failures += 0 if check(
+                "全部跳过时不得把会话标记为已还原", not_marked,
+                f"skipped={rb3.skipped_count} marked_restored={rb3.marked_restored}") else 1
+        finally:
+            _pw.is_elevated = real_elevated
+    except Exception as exc:  # noqa: BLE001 - 检查本身出错等同于不一致
+        failures += 0 if check("回滚状态上报可验证", False,
+                               f"{type(exc).__name__}: {exc}") else 1
+
     # ---- 12. 门禁自身规模 ----
     # 文档长期写"18 项"，而脚本实际跑 20 项且从未被核对过。根因是
     # "项"这个单位本身模糊：它既可以是"节"，也可以是"子检查"。

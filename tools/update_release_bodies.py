@@ -87,7 +87,12 @@ def do_merge() -> int:
         zh = zh_path.read_text(encoding="utf-8").strip()
         en = en_path.read_text(encoding="utf-8").strip()
         merged = zh + SEPARATOR + en + "\n"
-        (BODIES / f"{tag}.merged.md").write_text(merged, encoding="utf-8")
+        # 必须显式 newline="\n"：Windows 上 write_text 默认把 \n 翻译成 \r\n，
+        # 而发布说明会被 append 到 GitHub Release body。仓库基线是 LF，
+        # 不显式指定会让每次 merge 都把**所有**历史 merged 文件重写成 CRLF，
+        # git diff 显示整份文件变更，真实改动被淹没（本仓库踩过两次）。
+        with open(BODIES / f"{tag}.merged.md", "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(merged)
         print(f"{tag}: 中文 {len(zh)} + 英文 {len(en)} = {len(merged)} 字符")
     return 0
 

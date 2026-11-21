@@ -68,7 +68,12 @@ def rollback_item(store: Any, session: Any, ctx: Any, item: BackupItem,
         return result
 
     result.finished_at = pw.now()
-    if result.state is ActionState.SKIPPED:
+    # _dispatch 有权直接判定结果：SKIPPED（按设计不自动回滚）与
+    # ROLLBACK_FAILED（备份类型无法识别）都在它内部写好文案。
+    # 这里必须尊重它已定的状态——曾经只判了 SKIPPED，导致未知 kind 的
+    # FAILED 被下面两行覆盖成 ROLLED_BACK，回滚在"什么都没恢复"的情况下
+    # 上报成功并把会话标记为已还原。
+    if result.state in (ActionState.SKIPPED, ActionState.ROLLBACK_FAILED):
         return result
     result.state = ActionState.ROLLED_BACK
     result.message = detail or f"已恢复「{item.label}」"
@@ -327,6 +332,11 @@ def rollback_items_of_kind(store: Any, session: Any, ctx: Any, *, kind: str,
     """恢复本会话中指定 kind 的全部备份项，聚合成单个 ActionResult。
 
     动作自己的 `rollback()` 用它，保证"单条回滚"与"整轮回滚"行为一致。
+
+    状态判定与 `rollback_item()` 同一原则：**没恢复的不能算成功**。
+    SKIPPED（按设计不自动回滚 / 权限不足）必须如实上报，不能并进
+    "已恢复 N 项"——否则单条回滚通道会在什么都没做的情况下返回
+    ROLLED_BACK + verified=True，与非管理员整轮回滚造假成功是同一个缺陷。
     """
     items = [item for item in session.items if item.kind == kind]
     result = ActionResult(action_id=action_id, started_at=pw.now())
@@ -338,24 +348,56 @@ def rollback_items_of_kind(store: Any, session: Any, ctx: Any, *, kind: str,
 
     elevated = pw.is_elevated()
     failures: list[str] = []
-    applied = 0
+    restored = 0
+    skipped: list[str] = []
     for item in reversed(items):
         sub = rollback_item(store, session, ctx, item, elevated=elevated)
-        if sub.state in (ActionState.ROLLED_BACK, ActionState.SKIPPED):
-            applied += 1
+        if sub.state is ActionState.ROLLED_BACK:
+            restored += 1
+            result.detail.append(f"[{sub.state.value}] {sub.message}")
+        elif sub.state is ActionState.SKIPPED:
+            skipped.append(sub.message)
             result.detail.append(f"[{sub.state.value}] {sub.message}")
         else:
             failures.append(f"{item.key}: {sub.error or sub.message}")
 
     result.finished_at = pw.now()
+
     if failures:
+        # 失败与跳过可能同时出现（例如非管理员回滚 registry 类：HKCU 项能还原、
+        # HKLM 项被权限拦下、另一个 .reg 备份被删导致失败）。此时不能只报失败——
+        # 跳过项的条数与原因同样是用户补救的依据，丢了就回到"既不知道是哪两项，
+        # 也不知道能不能补救"的老问题。
         result.state = ActionState.ROLLBACK_FAILED
-        result.message = f"部分备份项恢复失败（成功 {applied} 项）"
-        result.error = "\n".join(failures)
+        head = f"部分备份项恢复失败（成功 {restored} 项"
+        if skipped:
+            head += f"，跳过 {len(skipped)} 项"
+        result.message = head + "）"
+        parts = [f"[失败] {f}" for f in failures]
+        parts += [f"[跳过] {s}" for s in skipped]
+        result.error = "\n".join(parts)
         result.verified = False
         return result
+
+    if skipped and not restored:
+        # 一项都没恢复：既不是失败（备份可能完好，只是当前权限或设计不允许），
+        # 也绝不是成功。
+        result.state = ActionState.SKIPPED
+        result.message = f"未恢复任何备份项（{len(skipped)} 项被跳过）"
+        result.error = "\n".join(skipped)
+        result.verified = False
+        return result
+
+    if skipped:
+        # 部分恢复、部分跳过：如实标为部分未完成，不能假装全部复原。
+        result.state = ActionState.ROLLBACK_FAILED
+        result.message = f"部分备份项未恢复（成功 {restored} 项，跳过 {len(skipped)} 项）"
+        result.error = "\n".join(skipped)
+        result.verified = False
+        return result
+
     result.state = ActionState.ROLLED_BACK
-    result.message = f"已恢复 {applied} 项备份"
+    result.message = f"已恢复 {restored} 项备份"
     result.verified = True
     return result
 

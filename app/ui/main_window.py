@@ -826,29 +826,29 @@ class MainWindow(QMainWindow):
 
         ok = report.ok_count
         fail = report.fail_count
+        skipped = report.skipped_count
         self.repair_page.refresh()
         self.backup_page.refresh()
-        lines = [f"执行完成：成功 {ok} 项" + (f"，失败 {fail} 项" if fail else "")]
-        if getattr(report, "partial", False):
-            lines.append("")
-            lines.append("⚠ 部分动作未成功，建议到「备份与回滚」回滚本次会话。")
-        lines.append("")
-        lines.append(f"备份会话：{report.session_id}")
+        # 汇总文字由 engine 组装（可单测），UI 不再自己拼"成功 N 项"——
+        # 那样会让"全部跳过"看起来像什么都没发生。
+        lines = repair_engine.repair_summary_lines(report)
         write_audit(event="repair", target="一键修复",
-                    detail=f"成功 {ok}，失败 {fail}", ok=(fail == 0),
+                    detail=f"成功 {ok}，失败 {fail}，跳过 {skipped}",
+                    ok=(fail == 0),
                     session_id=report.session_id)
         QMessageBox.information(self, "修复完成", "\n".join(lines))
 
     def _render_rollback(self, report) -> None:
         self.backup_page.refresh()
-        ok = getattr(report, "ok_count", 0)
-        fail = getattr(report, "fail_count", 0)
-        msg = f"回滚完成：成功 {ok} 项" + (f"，失败 {fail} 项" if fail else "")
-        if fail:
-            msg += "\n\n部分项目未能还原，详情见下方与 report 日志。"
+        ok = report.ok_count
+        fail = report.fail_count
+        skipped = report.skipped_count
+        # 逐项原因由 engine 组装，UI 不重复这套判断逻辑（也便于单元测试）
+        msg = "\n".join(repair_engine.rollback_summary_lines(report))
         write_audit(event="rollback", target="回滚备份",
-                    detail=f"成功 {ok}，失败 {fail}", ok=(fail == 0),
-                    session_id=getattr(report, "session_id", ""))
+                    detail=f"成功 {ok}，失败 {fail}，未还原 {skipped}",
+                    ok=(fail == 0),
+                    session_id=report.session_id)
         QMessageBox.information(self, "回滚结果", msg)
 
     # ------------------------------------------------------------------ #

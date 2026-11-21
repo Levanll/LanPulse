@@ -29,6 +29,47 @@ KEY_RE = re.compile(r"""\bt\(\s*["']([a-z][\w]*(?:\.[\w]+)+)["']""")
 KNOWN_NON_KEYS = {"mtu.optimize"}
 
 
+def _duplicate_keys(path: pathlib.Path) -> list[tuple[str, int, int]]:
+    """找出语言包源码里重复定义的 key。
+
+    必须读源码而不是遍历 CATALOG：Python 的 dict 字面量遇到重复键会**静默
+    保留后者**，运行时根本看不到重复。`msg.rollback_partial` 就这样被定义过
+    两次、值还不一样，界面上表现为"文案改了没生效"。
+
+    返回 [(key, 首次行号, 重复行号)]，只报值不同的；值相同的重复属于
+    历史冗余，清理它不属于本检查的职责。
+    """
+    import ast
+
+    src = path.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    dups: list[tuple[str, int, int]] = []
+    for node in tree.body:
+        value = None
+        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", None) == "CATALOG":
+            value = node.value
+        elif isinstance(node, ast.Assign) and any(
+                getattr(t, "id", None) == "CATALOG" for t in node.targets):
+            value = node.value
+        if not isinstance(value, ast.Dict):
+            continue
+        seen: dict[str, tuple[int, object]] = {}
+        for k, v in zip(value.keys, value.values):
+            if not (isinstance(k, ast.Constant) and isinstance(k.value, str)):
+                continue
+            try:
+                lit = ast.literal_eval(v)
+            except ValueError:
+                lit = object()
+            if k.value in seen:
+                first_line, first_lit = seen[k.value]
+                if first_lit != lit:
+                    dups.append((k.value, first_line, k.lineno))
+            else:
+                seen[k.value] = (k.lineno, lit)
+    return dups
+
+
 def main() -> int:
     used: set[str] = set()
     for p in list((ROOT / "app").rglob("*.py")) + list((ROOT / "core").rglob("*.py")):
@@ -63,8 +104,18 @@ def main() -> int:
         bad = True
         print(f"\n仅 en 有 {len(only_en)} 个：{only_en[:20]}")
 
+    # ---- 语言包内重复 key（后一个会静默覆盖前一个） ----
+    for name, path in (("zh", ROOT / "app" / "i18n_zh.py"),
+                       ("en", ROOT / "app" / "i18n_en.py")):
+        dups = _duplicate_keys(path)
+        if dups:
+            bad = True
+            print(f"\n{name} 有 {len(dups)} 个重复 key（后值覆盖前值）：")
+            for key, first, again in dups:
+                print(f"  - {key}  行 {first} 被行 {again} 覆盖")
+
     if not bad:
-        print("\n通过：无缺失、两语言 key 集合完全一致。")
+        print("\n通过：无缺失、两语言 key 集合完全一致、无重复定义。")
     return 1 if bad else 0
 
 
