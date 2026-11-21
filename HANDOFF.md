@@ -1,10 +1,13 @@
 # 交接文档（HANDOFF）
 
 > 面向：接手继续开发的新会话
-> 更新时间：2026-11-13
-> 当前版本：LanPulse v1.3.1（待发布）
-> 最新提交：`a3ff50b` 更新检查延后补做（**随 v1.3.1 发布**）
+> 更新时间：2026-11-21
+> 当前版本：LanPulse v1.3.2（待发布，2026-11-21）
+> 最新提交：`7c49f62` 加通用发版脚本 tools/create_release.py
 > 仓库：https://github.com/Levanll/LanPulse
+>
+> **v1.3.2 待发布**：回滚状态上报缺陷修复 + 门禁加固（见第七节）。
+> 版本号已升到 1.3.2，`site/latest.json` 与站点已同步，发版按第二节流程走。
 > 工作目录：`D:\Documents\deepseek-harness\default-workspace\lanpulse`
 
 ---
@@ -21,7 +24,7 @@
 
 技术栈：Python 3.12 + PySide6 6.8 + PyInstaller 6.22（onedir）+ Inno Setup 6.7.3。
 
-**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1401 条双语文案 / 168 项测试。
+**规模**：14 项检测 / 6 个场景 / 10 条根因规则 / 15 个可回滚修复动作 / 12 套区域剖面 / 9 个界面页面 / 1401 条双语文案 / 193 项测试。
 
 ---
 
@@ -35,11 +38,11 @@ cd D:\Documents\deepseek-harness\default-workspace\lanpulse
 $env:PYTHONPATH="."
 .\.venv\Scripts\python.exe main.py
 
-# 全量测试（168 项，约 1.4 秒）
+# 全量测试（193 项，约 1.6 秒）
 .\.venv\Scripts\python.exe -m pytest tests -q
 
 # 提交前必跑的四道门禁（全部必须 exit=0）
-.\.venv\Scripts\python.exe tools\check_consistency.py    # 12 节交叉校验
+.\.venv\Scripts\python.exe tools\check_consistency.py    # 13 节交叉校验
 .\.venv\Scripts\python.exe tools\audit_i18n.py
 .\.venv\Scripts\python.exe tools\privacy_audit.py
 
@@ -52,8 +55,8 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 ```
 
 **v1.3.1 带走了两个只在源码里的修复**：`a38eaaa`（更新检查抢 runner，
-导致体检结果丢失）与 `a3ff50b`（更新检查延后补做）。两者都不在已发布的
-1.3.0 安装包里，1.3.1 起才真正消除。
+导致体检结果丢失）与 `a3ff50b`（更新检查延后补做）。两者都不在 1.3.0
+安装包里，1.3.1 起才真正消除——**v1.3.1 已于 2026-11-13 发布**。
 
 **发版流程（v1.2.2 起按这个顺序）**：
 
@@ -105,7 +108,7 @@ lanpulse/
 │   ├── sysutil.py             提权 / 单实例 / 环境自检
 │   ├── report.py              HTML / JSON / TXT 导出
 │   └── ui/                    PySide6 界面（9 个页面）
-├── tests/                     168 项
+├── tests/                     193 项
 ├── tools/                     开发与运维脚本（见第八节）
 ├── installer/                 Inno Setup 脚本与资源
 ├── site/                      落地页（GitHub Pages 的发布源，自包含）
@@ -220,15 +223,19 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 | 中英双语 | 1401 条，key 集合完全一致 |
 | 报告导出 | HTML / JSON / TXT |
 | CI + Release 工作流 | 四道门禁已强制，失败即阻断发布 |
-| GitHub 发布 | v1.1.0 / v1.2.0 / v1.2.1 / v1.2.2 / v1.3.0 均已发布 |
+| GitHub 发布 | v1.1.0 / v1.2.0 / v1.2.1 / v1.2.2 / v1.3.0 / v1.3.1 均已发布 |
 
 ### 仓库
 
 - 地址：https://github.com/Levanll/LanPulse
 - 分支：`main`（历史已重写为干净起点）
-- 最新 Release：`v1.3.0`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
-- **main 上有未发版的修复**：`a38eaaa`（更新检查抢 runner → 体检结果丢失）。
-  版本号仍是 1.3.0，下次发版需升到 1.3.1 并重跑完整发版流程
+- 最新 Release：`v1.3.1`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
+- **v1.3.1 已发出的两个修复**：`a38eaaa`（更新检查抢 runner → 体检结果丢失）
+  与 `a3ff50b`（更新检查延后补做）。1.3.0 安装包不含它们，装 1.3.0 的用户
+  必须升级才会消除
+- **main 上有未发版的工作**：回滚失败路径缺陷修复（未知备份类型曾被上报成
+  恢复成功）+ 16 项失败路径测试。版本号仍为 1.3.1，下次发版需升到 1.3.2
+  并重跑完整发版流程
 - 数据目录：`%LOCALAPPDATA%\LanPulse`
 - Packages：**有意保持为空**（本项目为 Windows exe，GitHub Packages 的 registry 均不匹配）
 - 落地页：https://levanll.github.io/LanPulse/ （源在 `site/`，双语互链）
@@ -287,7 +294,10 @@ docs/release-notes/
    `TARGETS` 反推覆盖集合，与本节的清单逐项比对。此前曾把 7 个实数写成 10 个，
    因为把 `dns.set_public` / `dns.flush_cache` 在"已测清单"和"另有 dns.* 两项"里
    各数了一次。**新增闭环动作时改的是脚本，不是这段文字。**
-4. **回滚失败路径未测试** —— 代码有处理，但没有构造过"回滚中途失败"的场景。
+4. ~~**回滚失败路径未测试**~~ **已消除（2026-11-21）** —— 见第七节「回滚失败
+   路径：未知备份类型曾被当成功」与 `tests/test_rollback_failure.py`。
+   覆盖备份文件被删/被改坏、未知备份类型、部分项失败不中断、修好后重试成功、
+   会话读不出来共 5 类；其中"未知类型被上报成功"是这次测出来的真缺陷。
 4b. ~~**1.3.0 安装包不含 P1 修复**~~ **已在 v1.3.1 消除** —— 那两个修复
    （`a38eaaa` 抢 runner、`a3ff50b` 延后补做）都随 1.3.1 进包。仍装 1.3.0
    的用户会遭遇该缺陷，需升级到 1.3.1。
@@ -309,8 +319,8 @@ docs/release-notes/
 
 | 层级 | 命令 | 说明 |
 |---|---|---|
-| 单元 | `pytest tests -q` | 168 项，约 1.4 秒 |
-| 一致性 | `tools/check_consistency.py` | 12 节交叉校验：数量声明/版本/品牌/数据目录/截图/i18n/链接/站点/闭环覆盖/测试数量/更新清单/自身规模 |
+| 单元 | `pytest tests -q` | 193 项，约 1.7 秒 |
+| 一致性 | `tools/check_consistency.py` | 13 节交叉校验：数量声明/版本/品牌/数据目录/截图/i18n/链接/站点/闭环覆盖/测试数量/更新清单/回滚状态上报/自身规模 |
 | 站点 | `tools/check_site.py` | 资源可达 / 版本一致 / 双语互链 / 无越界引用 |
 | 端到端 | 构建 → 安装 → 启动 → 卸载 | 手动，见下 |
 
@@ -322,7 +332,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1 -Fresh
 
 # 2. 静默安装到临时目录
 $tmp = "$env:TEMP\lp_test"
-Start-Process release\LanPulse-1.3.0-Setup.exe `
+Start-Process release\LanPulse-1.3.2-Setup.exe `
   -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/DIR=`"$tmp`"" -Wait
 
 # 3. 启动，确认无崩溃、窗口标题为「LanPulse - 网络体检与一键修复」
@@ -390,6 +400,66 @@ platform_win as pw`。单元测试不执行动作、`dry_run` 也不走 `apply()
 
 **已加 `tests/test_repair_contracts.py`**：用 AST 静态扫描「使用了但未导入的模块级别名」。
 新增修复动作后这个测试会自动覆盖。
+
+### 回滚失败路径：未知备份类型曾被当成功（2026-11-21）
+
+三处独立缺陷叠在同一条链路上，都不报错，只让"回滚成功"变成谎话：
+
+1. **`rollback_item()` 覆盖了 `_dispatch()` 的判定。** `_dispatch()` 对未知 kind
+   明确写了 `ROLLBACK_FAILED` + "拒绝猜测恢复方式"，但 `rollback_item()` 之后只判了
+   `SKIPPED`，于是未知类型被下面两行统一改写成 `ROLLED_BACK`、`verified=True`。
+   实测表现：`ok_count=1`、`fail_count=0`、会话被 `mark_restored()` 标记为已还原，
+   而实际什么都没恢复。**与 ADS 事故同形态：备份看着正常，回滚在"成功"假象下失效。
+   教训：分派层有权判定结果时，聚合层必须尊重它已定的状态，不能只判自己想得到的那个。**
+
+2. **失败项的 kind 只存在于 `message`，而汇总优先取 `error`。** 未知类型的
+   `message`（"未知的备份类型「xxx」"）被 `error`（"类型不匹配"）盖掉后，
+   用户看到提示也不知道到底哪种备份无法识别。两者都要输出。
+
+3. **回滚对话框只报"成功 N 项"。** 失败项与跳过项的具体原因都不显示；
+   非管理员整轮回滚时所有项被跳过，界面显示"回滚完成：成功 0 项"就结束了，
+   看起来像什么都没发生。现在由 `RepairEngine.rollback_summary_lines()` 组装
+   逐项原因（引擎层，可单测），UI 只负责展示。
+
+4. **还有第四条，形态完全相同，出现在单条回滚通道上。** 制定 v1.3.2 计划时
+   顺手验证发现：`rollback_items_of_kind()`（13 个动作单条回滚的唯一入口）把
+   `SKIPPED` 和 `ROLLED_BACK` 一起计入 `applied`，然后无条件返回
+   `ROLLED_BACK` + `verified=True`。于是"非管理员点单条回滚"（每项都因权限
+   被跳过）和"`adapter.renew_dhcp` 等按设计不自动回滚"都显示「已恢复 N 项备份」。
+   **同一个模式在同一个文件里出现了两次，只修一处就等于没修。**
+5. **修复结果也有同源问题。** `_render_repair_report` 只拼"成功 N 项"，
+   跳过项既不算失败也不显示；全部动作都 SKIPPED 时弹窗是「执行完成：成功 0 项」。
+
+**共性结论（改聚合逻辑前必读）**：
+
+> 凡是"遍历子结果并汇总成一个状态"的地方，都必须显式处理**全部**枚举值。
+> 只判自己想要的那个分支，剩下的会被兜底逻辑吞成成功。
+> 正确写法是先分派（`is` 精确比较），再按 fail > skip > ok 的优先级合成，
+> **且 skip 不得计入 ok**。
+
+6. **同一模式在制定 v1.3.2 之后又出现第三、第四次。** 代码审查指出：
+   `RepairEngine.rollback()` 的收尾判定 `if elevated and fail_count == 0`
+   没看 `skipped_count`，于是"全部按设计不自动回滚"（dhcp/winhttp）的会话
+   仍被写入 `restored_at`，备份列表显示「（已还原）」而对话框写「未还原 1 项」；
+   以及 `rollback_items_of_kind()` 的失败分支把 `skipped` 丢掉了。
+   **教训：改完一处聚合逻辑后，必须把"这个判定有没有考虑全部枚举值"
+   对同一文件里的每个聚合点再走一遍，不能只修被指出的那一处。**
+
+**回归覆盖**：`tests/test_rollback_failure.py`（25 项）。验证过它真能抓到缺陷——
+分别把整轮与单条两处修复回退，对应用例立刻变红。
+
+**新增门禁（防止第三次）**：
+
+- `check_consistency.py` 第 [11b] 节「回滚状态上报」：用假备份商店**实际跑**
+  聚合逻辑，断言"全部跳过不得上报为已恢复"与"未知类型不得上报为已恢复"。
+  这是含义层面的动态断言——静态扫描只能看出写了哪些 state 比较，判断不了
+  那个比较的含义对不对。已实测回退修复后该节变红。
+- `audit_i18n.py` 新增「语言包内重复 key」检查。dict 字面量里的重复键被
+  Python 静默保留后者，运行时遍历 `CATALOG` 根本看不出来，只能 AST 读源码。
+  已实测注入重复键后 exit=1 并指出行号。
+
+**顺带修掉**：`msg.rollback_partial` 在中英语言包里各被定义两次，后者静默覆盖前者
+（中文两个值不同，且实际生效的那个带了个无人传参的 `{n}`）。
 
 ### `localized_meta` 逐字段重建会静默丢字段
 
@@ -782,7 +852,7 @@ document.elementFromPoint(cx, b.top + 15)   // 必须命中 IMG，不是 DIV.wra
 |---|---|---|
 | 高 | 补测 `mtu.optimize` | 需构造安全 MTU 值（如 1400），不能依赖自然触发——实测值等于当前值时动作会 SKIP |
 | 高 | 补测 `adapter.renew_dhcp` | 会断网 3–10 秒，脚本里要明确提示并排到最后单独跑 |
-| 高 | 回滚失败路径测试 | 构造中途失败（备份文件被删/改坏）验证提示与恢复 |
+| ~~高~~ 已完成 | ~~回滚失败路径测试~~ | 已消除，见第七节与 `tests/test_rollback_failure.py` |
 | 中 | 补测 `dns.restore_dhcp` / `hosts.restore_default` / `proxy.restore_auto` | 风险不高，可并入现有闭环脚本 |
 | 中 | 语言切换重译 detail | 需把 detail 也改成 key + args |
 | 中 | IPv6 完整诊断 | 目前只采集不诊断 |
@@ -809,7 +879,7 @@ document.elementFromPoint(cx, b.top + 15)   // 必须命中 IMG，不是 DIV.wra
 
 **发布相关脚本**：
 
-- `tools/check_consistency.py` —— 12 节交叉校验，改文档/版本后必跑
+- `tools/check_consistency.py` —— 13 节交叉校验，改文档/版本后必跑
 - `tools/repo_about.py` + `tools/apply_repo_about.py` —— 生成并应用双语 About 与 topics
 - `tools/update_release_bodies.py` —— 发布说明中英合并与推送（`merge` 子命令只生成不推送）
 - `tools/publish_github.py` / `tools/final_publish.py` —— 版本号均从 branding 读（切勿改回硬编码）

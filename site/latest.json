@@ -1,7 +1,7 @@
 {
-  "version": "1.3.1",
+  "version": "1.3.2",
   "url": "https://github.com/Levanll/LanPulse/releases/latest",
-  "notes_zh": "修复更新检查的两个问题：默认配置下永远不会执行；正常的「无更新」结果被误记为警告",
-  "notes_en": "Fixed two update-check issues: it never ran under default settings, and a normal \"no update\" result was logged as a warning",
+  "notes_zh": "修复回滚把「什么都没恢复」上报成成功的问题；回滚与修复结果现在逐项列出跳过与失败的原因",
+  "notes_en": "Fixed rollbacks reporting success when nothing was restored; rollback and repair results now list each skipped or failed item",
   "mandatory": false
 }
