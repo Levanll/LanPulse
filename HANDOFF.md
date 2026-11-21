@@ -3,7 +3,7 @@
 > 面向：接手继续开发的新会话
 > 更新时间：2026-11-21
 > 当前版本：LanPulse v1.3.2（**已发布**，2026-11-21）
-> 最新提交：`c9b5e4f` 发布 v1.3.2
+> 最新提交：`6b83fbf` v1.3.2 发布后回写状态
 > 仓库：https://github.com/Levanll/LanPulse
 >
 > **v1.3.2 已发布**：回滚状态上报缺陷修复（四处同源）+ 门禁加固（见第七节）。
@@ -228,7 +228,7 @@ checks（测量） → rootcause（解释） → repair（动作） → backup�
 
 - 地址：https://github.com/Levanll/LanPulse
 - 分支：`main`（历史已重写为干净起点）
-- 最新 Release：`v1.3.1`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
+- 最新 Release：`v1.3.2`，3 个资产（Setup.exe / portable.zip / SHA256SUMS.txt）
 - **v1.3.1 已发出的两个修复**：`a38eaaa`（更新检查抢 runner → 体检结果丢失）
   与 `a3ff50b`（更新检查延后补做）。1.3.0 安装包不含它们，装 1.3.0 的用户
   必须升级才会消除
@@ -258,9 +258,9 @@ git ls-remote origin refs/heads/main     # 与本地 HEAD 一致
 
 ```
 docs/release-notes/
-├── v1.3.0.md           中文
-├── v1.3.0.en.md        英文
-└── v1.3.0.merged.md    合并稿（实际推送到 GitHub 的内容）
+├── v1.3.2.md           中文
+├── v1.3.2.en.md        英文
+└── v1.3.2.merged.md    合并稿（实际推送到 GitHub 的内容）
 ```
 
 改发布说明**不要**去网页上直接编辑，改源稿再重推：
@@ -829,6 +829,12 @@ document.elementFromPoint(cx, b.top + 15)   // 必须命中 IMG，不是 DIV.wra
 不改 tag、不动资产、不升版本号。
 
 不要把 `**完整说明见 [CHANGELOG.md](...)**` 这类链接行删掉——它是通往完整变更记录的入口。
+
+**tag 注释打错了不要自己动手改。** v1.3.2 的 tag 注释里混进了一个外文单词
+（"回滚** цепи** 上"，应为「链路上」），已推到远端。修正需要 `git tag -f` +
+强推覆盖一个**已发布**的 tag，属于改写远端历史；影响范围仅限于 `git show v1.3.2`
+看到的注释文本，不影响代码、Release body 或任何资产，因此当时选择不修。
+要修的话走「删远端 tag → 重打 → 强推」并由人工确认，不要顺手带过。
 
 ### 提交前必跑
 
