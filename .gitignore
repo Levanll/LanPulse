@@ -53,3 +53,10 @@ settings.json
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Windows 保留设备名：MSYS/Git 在部分命令下会把它们列成未跟踪项，
+# 磁盘上并不存在真实文件。
+CON
+PRN
+AUX
+NUL
